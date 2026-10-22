@@ -1,19 +1,42 @@
 using System.Collections;
+using AlienInvaders.Game;
 using UnityEngine;
 
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// Greybox elevator cabin around the player's platform. The player is never moved: the walls grow out of
-    /// the floor and light strips slide along slits in the walls, which is enough for the brain to feel the ride.
-    /// The cabin has no windows, so the city is never seen moving (comfort rule: no visible motion outside).
+    /// Greybox elevator cabin around the player's platform. The player is never moved: the cabin builds itself
+    /// around them, light strips slide along slits in the walls and the structure of the shaft passes by above a
+    /// glass dome, which is enough for the brain to feel the ride. The walls have no windows, so the city is never
+    /// seen moving (comfort rule: no visible motion outside).
     /// </summary>
     public class ElevatorView : MonoBehaviour
     {
+        // Share of the closing animation used by each part. They overlap so the motion never stops: the floor
+        // appears first, then the walls rise and the roof closes last. Opening plays the same steps in reverse.
+        private static readonly Vector2 FloorStage = new Vector2(0f, 0.15f);
+        private static readonly Vector2 WallStage = new Vector2(0.1f, 0.8f);
+        private static readonly Vector2 RoofStage = new Vector2(0.75f, 1f);
+
         [Header("Cabin")]
         [Tooltip("Wall cubes with their pivot at the center. Their size in the scene is the closed cabin.")]
         [SerializeField] private Transform[] _walls;
+        [Tooltip("Glowing strip that rides the top edge of each wall while it grows or sinks (same order as Walls).")]
+        [SerializeField] private Transform[] _wallEdges;
+        [Tooltip("Floor plate and roof grow from the center of the cabin; their scene scale is the closed cabin.")]
+        [SerializeField] private Transform _floor;
         [SerializeField] private Transform _roof;
+
+        [Header("Shaft seen through the dome")]
+        [SerializeField] private GameObject _shaft;
+        [Tooltip("Shaft walls. They stop at the open end of the tunnel, where the dome shows the sky.")]
+        [SerializeField] private Transform[] _shaftWalls;
+        [Tooltip("Dark lid used while the end of the tunnel is still out of sight.")]
+        [SerializeField] private GameObject _shaftCap;
+        [Tooltip("Structural rings of the shaft. They slide down while the cabin goes up.")]
+        [SerializeField] private Transform[] _rings;
+        [SerializeField] private float _shaftBottom = 2.45f;
+        [SerializeField] private float _shaftTop = 16.45f;
 
         [Header("Light strips")]
         [Tooltip("Light segments ordered slit by slit (Lights Per Slit segments for each wall).")]
@@ -24,7 +47,7 @@ namespace AlienInvaders.Views
         [SerializeField] private float _lightLength = 0.25f;
         [SerializeField] private Material _rideLight;
         [SerializeField] private Material _alarmLight;
-        [Tooltip("Meters per second the lights slide at full speed during the ascent.")]
+        [Tooltip("Meters per second the shaft slides past at full speed during the ascent.")]
         [SerializeField] private float _ascentLightSpeed = 3f;
         [SerializeField] private float _rescueLightSpeed = 9f;
         [Tooltip("Seconds to reach full speed and to stop again, so the ride starts and ends softly.")]
@@ -32,7 +55,7 @@ namespace AlienInvaders.Views
 
         [Header("Haptics")]
         [SerializeField] private float _ascentPulseInterval = 0.6f;
-        [SerializeField] private float _ascentPulseAmplitude = 0.3f;
+        [SerializeField] private float _ascentPulseAmplitude = 0.35f;
         [SerializeField] private float _rescuePulseInterval = 0.2f;
         [SerializeField] private float _rescuePulseAmplitude = 0.9f;
         [SerializeField] private float _pulseSeconds = 0.08f;
@@ -41,9 +64,9 @@ namespace AlienInvaders.Views
 
         private Vector3[] _wallPositions;
         private Vector3[] _wallScales;
+        private Vector3 _floorScale;
         private Vector3 _roofScale;
         private float _scroll;
-        private bool _vibrating;
 
         private void Awake()
         {
@@ -55,6 +78,7 @@ namespace AlienInvaders.Views
                 _wallPositions[i] = _walls[i].localPosition;
                 _wallScales[i] = _walls[i].localScale;
             }
+            _floorScale = _floor.localScale;
             _roofScale = _roof.localScale;
         }
 
@@ -63,25 +87,29 @@ namespace AlienInvaders.Views
         {
             SetClosedAmount(0f);
             SetLightsVisible(false);
-            SetVibration(0f);
+            _shaft.SetActive(false);
         }
 
-        /// <summary>Coroutine: the walls rise out of the floor and the roof closes over the player.</summary>
+        /// <summary>
+        /// Coroutine: the cabin builds itself around the player. Floor first, then the walls rise out of the real
+        /// floor and the roof closes last, so in AR the player watches the elevator take shape in their room.
+        /// </summary>
         public IEnumerator Close(float seconds)
         {
             yield return AnimateCabin(0f, 1f, seconds);
         }
 
-        /// <summary>Coroutine: the walls sink under the player's feet and the roof opens to the sky.</summary>
+        /// <summary>Coroutine: the roof opens to the sky and the walls sink under the player's feet.</summary>
         public IEnumerator Open(float seconds)
         {
             SetLightsVisible(false);
+            _shaft.SetActive(false); // at the top there is no shaft above the cabin anymore
             yield return AnimateCabin(1f, 0f, seconds);
         }
 
         /// <summary>
-        /// Coroutine: the ride to the top. Lights slide down the slits (so the cabin feels like it goes up)
-        /// with a soft haptic beat, as if passing floor after floor.
+        /// Coroutine: the ride to the top. Lights slide down the slits and the shaft rings pass down over the dome
+        /// (so the cabin feels like it goes up), with a soft haptic beat, as if passing floor after floor.
         /// </summary>
         public IEnumerator PlayAscent(float seconds)
         {
@@ -89,8 +117,8 @@ namespace AlienInvaders.Views
         }
 
         /// <summary>
-        /// Coroutine: emergency descent. The cabin slams shut, red lights rush up the slits (the cabin falls)
-        /// and both controllers shake hard.
+        /// Coroutine: emergency descent. The cabin slams shut, red lights and the shaft rush upwards (the cabin
+        /// falls) and both controllers shake hard.
         /// </summary>
         public IEnumerator PlayRescue(float seconds)
         {
@@ -102,13 +130,14 @@ namespace AlienInvaders.Views
         {
             for (float t = 0f; t < seconds; t += Time.deltaTime)
             {
-                SetClosedAmount(Mathf.SmoothStep(from, to, t / seconds));
+                // Linear here; each part eases in and out on its own (see Stage).
+                SetClosedAmount(Mathf.Lerp(from, to, t / seconds));
                 yield return null;
             }
             SetClosedAmount(to);
         }
 
-        // direction: -1 = lights move down (cabin going up), +1 = lights move up (cabin going down).
+        // direction: -1 = shaft moves down (cabin going up), +1 = shaft moves up (cabin going down).
         private IEnumerator Ride(float seconds, float direction, float maxSpeed, Material material,
             float pulseInterval, float pulseAmplitude)
         {
@@ -117,25 +146,70 @@ namespace AlienInvaders.Views
                 strip.sharedMaterial = material;
             }
             SetLightsVisible(true);
+            _shaft.SetActive(true);
 
+            // Length of the whole ride, so the end of the tunnel reaches the dome exactly when the cabin stops.
+            float distance = RideDistance(seconds, maxSpeed);
+            float travelled = 0f;
+            int lastPulse = -1;
             for (float t = 0f; t < seconds; t += Time.deltaTime)
             {
-                // Speed ramps up at the start and down at the end, like a real elevator.
-                float ramp = Mathf.SmoothStep(0f, 1f, Mathf.Min(t, seconds - t) / _rampSeconds);
-                _scroll += direction * maxSpeed * ramp * Time.deltaTime;
+                float ramp = Ramp(t, seconds);
+                float step = maxSpeed * ramp * Time.deltaTime;
+                travelled += step;
+                _scroll += direction * step;
                 LayoutLights();
+                // Going up, the open end of the tunnel comes down to meet the dome; falling, the tunnel grows above.
+                LayoutShaft(direction < 0f ? distance - travelled : travelled);
 
-                bool pulseOn = t % pulseInterval < _pulseSeconds;
-                SetVibration(pulseOn ? pulseAmplitude * ramp : 0f);
+                // One short pulse per interval, like passing floor after floor; it fades with the speed.
+                int pulse = Mathf.FloorToInt(t / pulseInterval);
+                if (pulse != lastPulse && ramp > 0.05f)
+                {
+                    lastPulse = pulse;
+                    ControllerHaptics.PulseBoth(pulseAmplitude * ramp, _pulseSeconds);
+                }
                 yield return null;
             }
-            SetVibration(0f);
+            LayoutShaft(direction < 0f ? 0f : distance);
         }
 
-        // 0 = no cabin, 1 = closed cabin. Walls keep their base on the floor while their height changes.
+        // Speed factor from 0 to 1: it ramps up at the start and down at the end, like a real elevator.
+        private float Ramp(float t, float seconds)
+        {
+            return Mathf.SmoothStep(0f, 1f, Mathf.Min(t, seconds - t) / _rampSeconds);
+        }
+
+        // Meters travelled in a ride of this length (sum of speed x time over small steps).
+        private float RideDistance(float seconds, float maxSpeed)
+        {
+            const int Steps = 200;
+            float dt = seconds / Steps;
+            float distance = 0f;
+            for (int i = 0; i < Steps; i++)
+            {
+                distance += maxSpeed * Ramp((i + 0.5f) * dt, seconds) * dt;
+            }
+            return distance;
+        }
+
+        // 0 = no cabin, 1 = closed cabin.
         private void SetClosedAmount(float amount)
         {
-            bool visible = amount > 0f;
+            SetPlate(_floor, _floorScale, Stage(amount, FloorStage));
+            SetWalls(Stage(amount, WallStage));
+            SetPlate(_roof, _roofScale, Stage(amount, RoofStage));
+        }
+
+        // Progress of one part inside its share of the animation, eased so it starts and stops softly.
+        private static float Stage(float amount, Vector2 range)
+        {
+            return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(range.x, range.y, amount));
+        }
+
+        // Walls keep their base on the floor while their height changes.
+        private void SetWalls(float amount)
+        {
             for (int i = 0; i < _walls.Length; i++)
             {
                 Vector3 scale = _wallScales[i];
@@ -144,12 +218,27 @@ namespace AlienInvaders.Views
                 position.y -= (_wallScales[i].y - scale.y) * 0.5f;
 
                 Transform wall = _walls[i];
-                wall.gameObject.SetActive(visible);
+                wall.gameObject.SetActive(amount > 0f);
                 wall.localScale = scale;
                 wall.localPosition = position;
+
+                if (i < _wallEdges.Length)
+                {
+                    // The light strip marks where the wall is being "built", so the player sees it emerge.
+                    Transform edge = _wallEdges[i];
+                    edge.gameObject.SetActive(amount > 0f && amount < 1f);
+                    Vector3 edgePosition = edge.localPosition;
+                    edgePosition.y = position.y + scale.y * 0.5f;
+                    edge.localPosition = edgePosition;
+                }
             }
-            _roof.gameObject.SetActive(visible);
-            _roof.localScale = new Vector3(_roofScale.x * amount, _roofScale.y, _roofScale.z * amount);
+        }
+
+        // Floor and roof grow from the center of the cabin outwards.
+        private static void SetPlate(Transform plate, Vector3 fullScale, float amount)
+        {
+            plate.gameObject.SetActive(amount > 0f);
+            plate.localScale = new Vector3(fullScale.x * amount, fullScale.y, fullScale.z * amount);
         }
 
         private void LayoutLights()
@@ -175,23 +264,42 @@ namespace AlienInvaders.Views
             }
         }
 
+        // tunnelLength: meters of shaft above the roof before its open end (beyond the end the dome shows the sky).
+        private void LayoutShaft(float tunnelLength)
+        {
+            float span = _shaftTop - _shaftBottom;
+            float length = Mathf.Clamp(tunnelLength, 0f, span);
+            foreach (Transform wall in _shaftWalls)
+            {
+                wall.gameObject.SetActive(length > 0f);
+                Vector3 scale = wall.localScale;
+                scale.y = length;
+                wall.localScale = scale;
+                Vector3 position = wall.localPosition;
+                position.y = _shaftBottom + length * 0.5f;
+                wall.localPosition = position;
+            }
+            // While the end is farther than the modeled shaft, a dark lid keeps the tunnel looking endless.
+            _shaftCap.SetActive(tunnelLength > span);
+
+            // The rings are fixed to the shaft, so they move with the same scroll as the light strips.
+            float spacing = span / _rings.Length;
+            float end = _shaftBottom + length;
+            for (int i = 0; i < _rings.Length; i++)
+            {
+                Vector3 position = _rings[i].localPosition;
+                position.y = _shaftBottom + Mathf.Repeat(i * spacing + _scroll, span);
+                _rings[i].localPosition = position;
+                _rings[i].gameObject.SetActive(position.y < end);
+            }
+        }
+
         private void SetLightsVisible(bool visible)
         {
             foreach (Renderer strip in _lights)
             {
                 strip.enabled = visible;
             }
-        }
-
-        private void SetVibration(float amplitude)
-        {
-            bool on = amplitude > 0f;
-            if (on == _vibrating)
-            {
-                return; // only talk to the controllers when a pulse starts or ends
-            }
-            _vibrating = on;
-            OVRInput.SetControllerVibration(0.5f, amplitude, OVRInput.Controller.Touch);
         }
     }
 }

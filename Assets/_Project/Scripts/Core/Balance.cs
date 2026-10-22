@@ -28,8 +28,11 @@ namespace AlienInvaders.Core
         public const float CriticalIntegrity = 25f;
 
         // ---------- Elevator and AR / VR transition ----------
-        /// <summary>Seconds the elevator walls take to close around the player before the real room fades out.</summary>
-        public const float ElevatorCloseSeconds = 1.5f;
+        /// <summary>
+        /// Seconds the elevator takes to build itself around the player (floor, walls, roof) before the real
+        /// room fades out. Slow on purpose: watching the cabin close in the real room is the AR to VR transition.
+        /// </summary>
+        public const float ElevatorCloseSeconds = 8f;
 
         /// <summary>Passthrough fade between the real room and the tower (short, the cabin hides the change).</summary>
         public const float PassthroughFadeSeconds = 1.5f;
@@ -76,8 +79,11 @@ namespace AlienInvaders.Core
         public const float MinFlightHeight = -5f;
         public const float MaxFlightHeight = 15f;
 
-        /// <summary>Half width of the square tower (meters). Used to find impact points on the facade.</summary>
-        public const float TowerHalfWidth = 6f;
+        /// <summary>
+        /// Half width of the square tower (meters). Used to find impact points on the facade. The tower is
+        /// barely wider than the 1 x 1 m elevator, so the drop starts right at the player's feet (vertigo).
+        /// </summary>
+        public const float TowerHalfWidth = 0.6f;
 
         // ---------- Score ----------
         public const int PointsPerSecond = 10;
