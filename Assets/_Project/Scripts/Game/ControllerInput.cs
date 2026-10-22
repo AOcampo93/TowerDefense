@@ -12,6 +12,25 @@ namespace AlienInvaders.Game
     /// </summary>
     public static class ControllerInput
     {
+        // How far the trigger has to be pulled to count as held (0 = released, 1 = fully pressed).
+        private const float TriggerHeldThreshold = 0.5f;
+
+        /// <summary>True every frame the right index trigger is held down (continuous fire).</summary>
+        public static bool RightTriggerHeld()
+        {
+            if (OVRInput.Get(OVRInput.Axis1D.PrimaryIndexTrigger, OVRInput.Controller.RTouch) > TriggerHeldThreshold)
+            {
+                return true;
+            }
+#if UNITY_EDITOR
+            // Editor stand-in: holding Space holds the right trigger.
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null && keyboard.spaceKey.isPressed;
+#else
+            return false;
+#endif
+        }
+
         /// <summary>True only on the frame the right index trigger goes down (calibration, buttons).</summary>
         public static bool RightTriggerDown()
         {

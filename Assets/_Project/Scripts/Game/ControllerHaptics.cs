@@ -20,6 +20,12 @@ namespace AlienInvaders.Game
             Pulse(UnityEngine.InputSystem.CommonUsages.RightHand, amplitude, seconds);
         }
 
+        /// <summary>Buzz on the right controller only (the hand holding the weapon).</summary>
+        public static void PulseRight(float amplitude, float seconds)
+        {
+            Pulse(UnityEngine.InputSystem.CommonUsages.RightHand, amplitude, seconds);
+        }
+
         private static void Pulse(InternedString hand, float amplitude, float seconds)
         {
             XRControllerWithRumble controller = InputSystem.GetDevice<XRControllerWithRumble>(hand);

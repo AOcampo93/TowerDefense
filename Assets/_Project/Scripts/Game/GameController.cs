@@ -92,11 +92,13 @@ namespace AlienInvaders.Game
                     break;
 
                 case GameState.Arrival:
+                    // A new fight starts with a cold weapon (the gun appears while the cabin opens).
+                    Weapon.Reset();
                     StartCoroutine(ArrivalRoutine());
                     break;
 
                 case GameState.Defense:
-                    // The weapon and the waves start here once they are built (next phases).
+                    // The weapon arms itself in this state (WeaponController); the waves start here in a later phase.
                     break;
 
                 case GameState.Respite:

@@ -48,3 +48,8 @@ ExportedObj/
 # Local Meta debugger settings (machine specific, holds a local access token)
 /Assets/Resources/DevAgentSettings.asset
 /Assets/Resources/DevAgentSettings.asset.meta
+
+# Temporary files that Unity packages write during a player build (deleted when the build ends)
+/Assets/Resources/PerformanceTestRunInfo.json*
+/Assets/Resources/PerformanceTestRunSettings.json*
+/Assets/StreamingAssets/RuntimeActionBindings.json*

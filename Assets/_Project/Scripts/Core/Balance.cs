@@ -50,6 +50,15 @@ namespace AlienInvaders.Core
         public const float OverheatLockSeconds = 2f;
         public const float HeatAfterOverheat = 0.5f;
 
+        /// <summary>Radius of the shot's sphere cast (meters): a slight aim assist, so a near miss still hits.</summary>
+        public const float AimAssistRadius = 0.15f;
+
+        /// <summary>Reach of a shot (meters). Ships fly 15 to 40 m away, so a fair shot is never cut short.</summary>
+        public const float WeaponRange = 200f;
+
+        /// <summary>Damage of one shot (a fighter falls with one hit, a bomber needs three).</summary>
+        public const int ShotDamage = 1;
+
         // ---------- Waves ----------
         public const int MaxPortals = 4;
         public const float MaxSpeedMultiplier = 2f;
