@@ -1,0 +1,114 @@
+using AlienInvaders.Core;
+using NUnit.Framework;
+
+namespace AlienInvaders.Tests
+{
+    public class WaveGeneratorTests
+    {
+        [Test]
+        public void Portals_FollowFormula_AndAreCapped()
+        {
+            int[] expected = { 1, 1, 2, 2, 3, 3, 4, 4, 4, 4 };
+            for (int n = 1; n <= expected.Length; n++)
+            {
+                Assert.AreEqual(expected[n - 1], WaveGenerator.Build(n, 1).Portals, $"wave {n}");
+            }
+        }
+
+        [Test]
+        public void AimTime_NeverBelowMinimum()
+        {
+            WaveConfig late = WaveGenerator.Build(50, 1);
+            Assert.AreEqual(Balance.MinAimTime, late.AimTimeFighter, 0.001f);
+            Assert.AreEqual(2f, late.SpeedMultiplier, 0.001f);
+        }
+
+        [Test]
+        public void SameSeed_GivesSamePortals()
+        {
+            WaveConfig a = WaveGenerator.Build(5, 1234);
+            WaveConfig b = WaveGenerator.Build(5, 1234);
+            var pa = WaveGenerator.PortalPositions(a);
+            var pb = WaveGenerator.PortalPositions(b);
+            for (int i = 0; i < pa.Count; i++)
+            {
+                Assert.AreEqual(pa[i].AzimuthDegrees, pb[i].AzimuthDegrees);
+            }
+        }
+
+        [Test]
+        public void ShipTypes_CountMatchesWave()
+        {
+            WaveConfig wave = WaveGenerator.Build(6, 99);
+            var types = WaveGenerator.ShipTypes(wave);
+            Assert.AreEqual(wave.TotalShips, types.Count);
+            Assert.IsTrue(types.Contains(ShipType.Bomber));
+        }
+    }
+
+    public class WaveCycleTests
+    {
+        [Test]
+        public void Cycle_GoesPeace_Portals_Attack_Peace()
+        {
+            var cycle = new WaveCycle(new WaveGenerator(1));
+            int portals = 0, attacks = 0, cleared = 0;
+            cycle.OnPortalsOpening += _ => portals++;
+            cycle.OnAttackStarted += _ => attacks++;
+            cycle.OnWaveCleared += _ => cleared++;
+
+            cycle.Tick(Balance.PeaceSeconds + 0.01f, 0);
+            Assert.AreEqual(WavePhase.PortalsOpening, cycle.Phase);
+
+            cycle.Tick(Balance.PortalOpeningSeconds + 0.01f, 0);
+            Assert.AreEqual(WavePhase.Attacking, cycle.Phase);
+
+            cycle.Tick(1f, 5); // ships still alive
+            Assert.AreEqual(WavePhase.Attacking, cycle.Phase);
+
+            cycle.Tick(1f, 0); // all destroyed
+            Assert.AreEqual(WavePhase.Peace, cycle.Phase);
+            Assert.AreEqual((1, 1, 1), (portals, attacks, cleared));
+        }
+    }
+
+    public class WeaponHeatTests
+    {
+        [Test]
+        public void ContinuousFire_Overheats()
+        {
+            var weapon = new WeaponHeat();
+            int shots = 0;
+            for (int i = 0; i < 1000 && !weapon.Overheated; i++)
+            {
+                weapon.Tick(1f / Balance.ShotsPerSecond, triggerHeld: true);
+                if (weapon.TryFire()) shots++;
+            }
+            Assert.IsTrue(weapon.Overheated);
+            Assert.AreEqual((int)System.Math.Ceiling(1f / Balance.HeatPerShot), shots);
+        }
+
+        [Test]
+        public void Overheat_LocksThenRecoversAtHalfHeat()
+        {
+            var weapon = new WeaponHeat();
+            while (!weapon.Overheated)
+            {
+                weapon.Tick(1f, true);
+                weapon.TryFire();
+            }
+            Assert.IsFalse(weapon.TryFire());
+            weapon.Tick(Balance.OverheatLockSeconds + 0.01f, false);
+            Assert.IsFalse(weapon.Overheated);
+            Assert.AreEqual(Balance.HeatAfterOverheat, weapon.Heat, 0.001f);
+        }
+
+        [Test]
+        public void FireRate_IsLimited()
+        {
+            var weapon = new WeaponHeat();
+            Assert.IsTrue(weapon.TryFire());
+            Assert.IsFalse(weapon.TryFire()); // no time passed
+        }
+    }
+}
