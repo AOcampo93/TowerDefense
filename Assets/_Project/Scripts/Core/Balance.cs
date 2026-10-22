@@ -27,6 +27,19 @@ namespace AlienInvaders.Core
         /// <summary>Integrity at or below which the game enters the Critical state.</summary>
         public const float CriticalIntegrity = 25f;
 
+        // ---------- Elevator and AR / VR transition ----------
+        /// <summary>Seconds the elevator walls take to close around the player before the real room fades out.</summary>
+        public const float ElevatorCloseSeconds = 1.5f;
+
+        /// <summary>Passthrough fade between the real room and the tower (short, the cabin hides the change).</summary>
+        public const float PassthroughFadeSeconds = 1.5f;
+
+        /// <summary>Length of the ride to the top of the tower (design: 15 to 20 s of build-up).</summary>
+        public const float AscentSeconds = 15f;
+
+        /// <summary>Seconds for the cabin to open and sink under the player's feet when arriving at the top.</summary>
+        public const float ArrivalSeconds = 5f;
+
         // ---------- Weapon ----------
         public const float ShotsPerSecond = 8f;
         public const float HeatPerShot = 0.06f;
