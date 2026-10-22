@@ -48,17 +48,18 @@ namespace AlienInvaders.Views
         [SerializeField] private Material _rideLight;
         [SerializeField] private Material _alarmLight;
         [Tooltip("Meters per second the shaft slides past at full speed during the ascent.")]
-        [SerializeField] private float _ascentLightSpeed = 3f;
+        [SerializeField] private float _ascentLightSpeed = 7f;
         [SerializeField] private float _rescueLightSpeed = 9f;
         [Tooltip("Seconds to reach full speed and to stop again, so the ride starts and ends softly.")]
         [SerializeField] private float _rampSeconds = 2.5f;
 
         [Header("Haptics")]
-        [SerializeField] private float _ascentPulseInterval = 0.6f;
-        [SerializeField] private float _ascentPulseAmplitude = 0.35f;
-        [SerializeField] private float _rescuePulseInterval = 0.2f;
-        [SerializeField] private float _rescuePulseAmplitude = 0.9f;
-        [SerializeField] private float _pulseSeconds = 0.08f;
+        [Tooltip("Meters of shaft between two pulses (about one floor): the beat speeds up and slows down with the cabin.")]
+        [SerializeField] private float _ascentMetersPerPulse = 1.75f;
+        [SerializeField] private float _ascentPulseAmplitude = 0.8f;
+        [SerializeField] private float _rescueMetersPerPulse = 1f;
+        [SerializeField] private float _rescuePulseAmplitude = 1f;
+        [SerializeField] private float _pulseSeconds = 0.1f;
         [Tooltip("Seconds the emergency cabin takes to slam shut during the rescue.")]
         [SerializeField] private float _rescueCloseSeconds = 0.4f;
 
@@ -113,7 +114,7 @@ namespace AlienInvaders.Views
         /// </summary>
         public IEnumerator PlayAscent(float seconds)
         {
-            yield return Ride(seconds, -1f, _ascentLightSpeed, _rideLight, _ascentPulseInterval, _ascentPulseAmplitude);
+            yield return Ride(seconds, -1f, _ascentLightSpeed, _rideLight, _ascentMetersPerPulse, _ascentPulseAmplitude);
         }
 
         /// <summary>
@@ -123,7 +124,7 @@ namespace AlienInvaders.Views
         public IEnumerator PlayRescue(float seconds)
         {
             yield return AnimateCabin(0f, 1f, _rescueCloseSeconds);
-            yield return Ride(seconds, 1f, _rescueLightSpeed, _alarmLight, _rescuePulseInterval, _rescuePulseAmplitude);
+            yield return Ride(seconds, 1f, _rescueLightSpeed, _alarmLight, _rescueMetersPerPulse, _rescuePulseAmplitude);
         }
 
         private IEnumerator AnimateCabin(float from, float to, float seconds)
@@ -139,7 +140,7 @@ namespace AlienInvaders.Views
 
         // direction: -1 = shaft moves down (cabin going up), +1 = shaft moves up (cabin going down).
         private IEnumerator Ride(float seconds, float direction, float maxSpeed, Material material,
-            float pulseInterval, float pulseAmplitude)
+            float metersPerPulse, float pulseAmplitude)
         {
             foreach (Renderer strip in _lights)
             {
@@ -151,7 +152,7 @@ namespace AlienInvaders.Views
             // Length of the whole ride, so the end of the tunnel reaches the dome exactly when the cabin stops.
             float distance = RideDistance(seconds, maxSpeed);
             float travelled = 0f;
-            int lastPulse = -1;
+            float nextPulse = metersPerPulse;
             for (float t = 0f; t < seconds; t += Time.deltaTime)
             {
                 float ramp = Ramp(t, seconds);
@@ -162,12 +163,12 @@ namespace AlienInvaders.Views
                 // Going up, the open end of the tunnel comes down to meet the dome; falling, the tunnel grows above.
                 LayoutShaft(direction < 0f ? distance - travelled : travelled);
 
-                // One short pulse per interval, like passing floor after floor; it fades with the speed.
-                int pulse = Mathf.FloorToInt(t / pulseInterval);
-                if (pulse != lastPulse && ramp > 0.05f)
+                // One pulse every few meters, like passing floor after floor: the beat follows the speed,
+                // and the pulses get stronger as the cabin reaches full speed.
+                if (travelled >= nextPulse)
                 {
-                    lastPulse = pulse;
-                    ControllerHaptics.PulseBoth(pulseAmplitude * ramp, _pulseSeconds);
+                    nextPulse += metersPerPulse;
+                    ControllerHaptics.PulseBoth(pulseAmplitude * Mathf.Lerp(0.4f, 1f, ramp), _pulseSeconds);
                 }
                 yield return null;
             }

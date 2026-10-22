@@ -10383,14 +10383,14 @@ MonoBehaviour:
   _lightLength: 0.25
   _rideLight: {fileID: 2100000, guid: 33e50a48013e04c7681fac9227a32f7c, type: 2}
   _alarmLight: {fileID: 2100000, guid: 68a29e02ab704452ab09230db65ebd9f, type: 2}
-  _ascentLightSpeed: 3
+  _ascentLightSpeed: 7
   _rescueLightSpeed: 9
   _rampSeconds: 2.5
-  _ascentPulseInterval: 0.6
-  _ascentPulseAmplitude: 0.3
-  _rescuePulseInterval: 0.2
-  _rescuePulseAmplitude: 0.9
-  _pulseSeconds: 0.08
+  _ascentMetersPerPulse: 1.75
+  _ascentPulseAmplitude: 0.8
+  _rescueMetersPerPulse: 1
+  _rescuePulseAmplitude: 1
+  _pulseSeconds: 0.1
   _rescueCloseSeconds: 0.4
 --- !u!1 &1739554002
 GameObject:
