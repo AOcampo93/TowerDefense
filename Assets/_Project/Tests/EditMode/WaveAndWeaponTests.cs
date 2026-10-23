@@ -37,6 +37,13 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void Bombers_StartInWaveTwo()
+        {
+            Assert.IsFalse(WaveGenerator.ShipTypes(WaveGenerator.Build(1, 3)).Contains(ShipType.Bomber));
+            Assert.IsTrue(WaveGenerator.ShipTypes(WaveGenerator.Build(2, 3)).Contains(ShipType.Bomber));
+        }
+
+        [Test]
         public void PortalPlacement_ConvertsToPosition()
         {
             var east = new PortalPlacement { AzimuthDegrees = 90f, ElevationDegrees = 0f, Distance = 40f };

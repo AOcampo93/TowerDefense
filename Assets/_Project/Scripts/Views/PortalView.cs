@@ -5,8 +5,8 @@ namespace AlienInvaders.Views
 {
     /// <summary>
     /// Greybox alien portal: a black disc with two glowing purple rings that spin in opposite directions. It grows
-    /// open during the portal phase, so the player sees (and hears) where the next wave will come from, and shrinks
-    /// away when the wave is cleared. Pooled by the PortalSpawner.
+    /// open during the portal phase, so the player sees (and hears, with a 3D drone that swells with it) where the next
+    /// wave will come from, and shrinks away when the wave is cleared. Pooled by the PortalSpawner.
     /// </summary>
     public class PortalView : MonoBehaviour
     {
@@ -14,6 +14,7 @@ namespace AlienInvaders.Views
         [SerializeField] private Transform _visual;
         [SerializeField] private Transform _outerRing;
         [SerializeField] private Transform _innerRing;
+        [SerializeField] private AudioSource _hum;
 
         [Header("Feel")]
         [Tooltip("Degrees per second of the outer ring (the inner one spins faster the other way).")]
@@ -42,6 +43,9 @@ namespace AlienInvaders.Views
             _closing = false;
             _onClosed = null;
             SetOpenness(0f);
+            _hum.clip = PlaceholderSounds.PortalHum;
+            _hum.loop = true;
+            _hum.Play();
         }
 
         /// <summary>Shrinks the portal away and calls back when it is gone.</summary>
@@ -85,6 +89,7 @@ namespace AlienInvaders.Views
             Openness = openness;
             float pulse = 1f + Mathf.Sin(Time.time * _pulseRate * 2f * Mathf.PI) * _pulseAmount * openness;
             _visual.localScale = Vector3.one * Mathf.Max(0.0001f, openness * pulse);
+            _hum.volume = openness;
         }
     }
 }

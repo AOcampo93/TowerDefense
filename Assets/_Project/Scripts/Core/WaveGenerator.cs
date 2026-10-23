@@ -81,12 +81,18 @@ namespace AlienInvaders.Core
 
         /// <summary>
         /// Decides the type of every ship in the wave. The share of Bombers grows with the
-        /// wave number; the order is shuffled with the wave seed.
+        /// wave number (none in wave 1, at least one from wave 2); the order is shuffled with the wave seed.
         /// </summary>
         public static List<ShipType> ShipTypes(WaveConfig config)
         {
             int total = config.TotalShips;
             int bombers = (int)Math.Round(total * config.BomberRatio);
+            // As soon as the ratio allows bombers (wave 2), at least one shows up, so the new enemy is not delayed
+            // until the ratio is big enough to round up to one.
+            if (config.BomberRatio > 0f && bombers == 0)
+            {
+                bombers = 1;
+            }
             var types = new List<ShipType>(total);
 
             for (int i = 0; i < total; i++)

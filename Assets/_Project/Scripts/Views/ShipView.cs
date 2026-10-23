@@ -5,7 +5,9 @@ namespace AlienInvaders.Views
     /// <summary>
     /// Greybox look of an enemy ship. The models have no rig, so the life comes from code: the body bobs and banks
     /// into its turns. While the ship aims, a thin red warning laser grows thicker until the shot (design pillar:
-    /// the player is always warned); the shot itself is a short, thick red beam.
+    /// the player is always warned); the shot itself is a short, thick red beam. Sounds are 3D, so a ship charging
+    /// behind the player is heard behind them: a quiet engine loop while flying and a charging buzz whose pitch rises
+    /// until the shot.
     /// </summary>
     public class ShipView : MonoBehaviour
     {
@@ -27,6 +29,13 @@ namespace AlienInvaders.Views
         [SerializeField] private float _fireWidth = 0.35f;
         [SerializeField] private float _fireSeconds = 0.2f;
 
+        [Header("Sound")]
+        [SerializeField] private AudioSource _engine;
+        [Tooltip("Charging buzz and shot.")]
+        [SerializeField] private AudioSource _voice;
+        [SerializeField] private float _chargePitchStart = 0.8f;
+        [SerializeField] private float _chargePitchEnd = 2.2f;
+
         private Vector3 _target;
         private float _aimSeconds;
         private float _aimTimer;
@@ -41,14 +50,20 @@ namespace AlienInvaders.Views
             HideLasers();
             _bank = 0f;
             _lastYaw = transform.eulerAngles.y;
-            // So ships of the same wave do not bob in sync.
+            // So ships of the same wave do not bob (or hum) in sync.
             _bobOffset = Random.value * 10f;
+            _engine.clip = PlaceholderSounds.Engine;
+            _engine.loop = true;
+            _engine.pitch = Random.Range(0.9f, 1.1f);
+            _engine.Play();
         }
 
         /// <summary>Clears the lasers before the ship goes back to the pool.</summary>
         public void End()
         {
             HideLasers();
+            _engine.Stop();
+            _voice.Stop();
         }
 
         /// <summary>Warning laser towards the impact point for the whole aim time.</summary>
@@ -58,6 +73,10 @@ namespace AlienInvaders.Views
             _aimSeconds = Mathf.Max(0.01f, seconds);
             _aimTimer = _aimSeconds;
             _aimLaser.enabled = true;
+            _voice.clip = PlaceholderSounds.Charge;
+            _voice.loop = true;
+            _voice.pitch = _chargePitchStart;
+            _voice.Play();
         }
 
         /// <summary>The ship fires: the warning laser is replaced by a short heavy beam.</summary>
@@ -67,6 +86,10 @@ namespace AlienInvaders.Views
             _aimLaser.enabled = false;
             _fireLaser.enabled = true;
             _fireTimer = _fireSeconds;
+            _voice.Stop();
+            _voice.loop = false;
+            _voice.pitch = 1f;
+            _voice.PlayOneShot(PlaceholderSounds.EnemyShot);
         }
 
         private void LateUpdate()
@@ -79,6 +102,7 @@ namespace AlienInvaders.Views
                 _aimTimer -= dt;
                 float charge = 1f - Mathf.Clamp01(_aimTimer / _aimSeconds);
                 _aimLaser.widthMultiplier = Mathf.Lerp(_aimWidthStart, _aimWidthEnd, charge * charge);
+                _voice.pitch = Mathf.Lerp(_chargePitchStart, _chargePitchEnd, charge);
                 SetLaserPoints(_aimLaser);
             }
 
