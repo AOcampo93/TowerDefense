@@ -20,6 +20,10 @@ Shader "AlienInvaders/Building"
         _LitChance ("Lit Windows", Range(0, 1)) = 0.25
         _FireChance ("Burning Windows", Range(0, 1)) = 0.04
         _DetailFade ("Windows Fade Into Average (start, end meters)", Vector) = (300, 600, 0, 0)
+        _NeonChance ("Neon Signs", Range(0, 1)) = 0
+        _NeonA ("Neon A", Color) = (1, 0.2, 0.7, 1)
+        _NeonB ("Neon B", Color) = (0.2, 0.85, 1, 1)
+        _NeonC ("Neon C", Color) = (0.65, 0.3, 1, 1)
     }
 
     SubShader
@@ -59,6 +63,10 @@ Shader "AlienInvaders/Building"
                 half _FireChance;
                 half _UseVertexColor;
                 float4 _DetailFade;
+                half _NeonChance;
+                half4 _NeonA;
+                half4 _NeonB;
+                half4 _NeonC;
             CBUFFER_END
 
             struct Attributes
@@ -157,6 +165,16 @@ Shader "AlienInvaders/Building"
                         }
                     }
                     color = lerp(color, farColor, fade);
+
+                    // Neon signs: short glowing bands across some facades, four windows wide, near a floor's top.
+                    float2 signCell = float2(floor(grid.x / 4.0), cell.y);
+                    float signRandom = Hash(float3(signCell, 7.0 + dot(input.normalOS, float3(1.0, 2.0, 3.0))) + input.scale);
+                    float inFloor = frac(grid.y);
+                    if (signRandom < _NeonChance && inFloor > 0.84 && inFloor < 0.96)
+                    {
+                        half3 neon = signRandom < _NeonChance * 0.33 ? _NeonA.rgb : (signRandom < _NeonChance * 0.66 ? _NeonB.rgb : _NeonC.rgb);
+                        color = neon * 1.4;
+                    }
                 }
 
                 color = MixFog(color, input.fogFactor);

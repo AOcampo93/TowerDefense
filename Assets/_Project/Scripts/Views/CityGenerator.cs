@@ -6,10 +6,11 @@ namespace AlienInvaders.Views
 {
     /// <summary>
     /// Builds the city 200 m below the player when the game loads, from a fixed seed (same city every time).
-    /// Vertigo comes from three things the eye can measure: thousands of buildings shrinking towards the horizon,
-    /// a few skyscrapers next to the tower whose facades fall all the way to the street, and rooftop details close
-    /// enough to show the scale. Buildings follow the street grid of the ground (blocks of 40 m), are taller near
-    /// the tower, and are merged into a few big meshes so the headset draws the whole city in a few dozen calls.
+    /// Vertigo comes from what the eye can measure: a dark city of lit windows shrinking into the haze, a few tall
+    /// towers spread around whose facades fall all the way to the street, and rooftop details close enough to show
+    /// the scale. The player's tower always stays the tallest by a wide margin (no other building comes within 100 m
+    /// of its top). Buildings follow the street grid of the ground (blocks of 40 m) and are merged into a few big
+    /// meshes so the headset draws the whole city in a few dozen calls.
     /// It lives on an object that is active from the start, so the city is built while the game loads and not in
     /// the middle of the elevator ride (the city's own root stays hidden until VR).
     /// </summary>
@@ -25,23 +26,27 @@ namespace AlienInvaders.Views
         [SerializeField] private float _blockSize = 40f;
         [SerializeField] private float _streetWidth = 9f;
         [SerializeField] private float _sidewalk = 2f;
-        [SerializeField] private float _cityRadius = 850f;
+        [SerializeField] private float _cityRadius = 700f;
         [Tooltip("No regular buildings this close to the tower axis (a small plaza around its base).")]
         [SerializeField] private float _plazaRadius = 15f;
-        [SerializeField] private float _emptyBlockChance = 0.06f;
+        [SerializeField] private float _emptyBlockChance = 0.12f;
         [Tooltip("Blocks per side of each merged mesh. Bigger chunks = fewer draw calls, coarser culling.")]
         [SerializeField] private int _chunkBlocks = 6;
 
         [Header("Heights")]
-        [SerializeField] private float _tallestNearTower = 140f;
-        [SerializeField] private float _tallestAtEdge = 25f;
-        [SerializeField] private float _outlierChance = 0.05f;
+        [Tooltip("No building may come closer than this to the top of the player's tower.")]
+        [SerializeField] private float _clearanceBelowTower = 100f;
+        [Tooltip("Most buildings: low and mid rise.")]
+        [SerializeField] private Vector2 _typicalHeight = new Vector2(12f, 45f);
+        [Tooltip("A few tall towers, spread anywhere in the city.")]
+        [SerializeField] private float _tallChance = 0.07f;
+        [SerializeField] private Vector2 _tallHeight = new Vector2(60f, 100f);
 
         [Header("Skyscrapers next to the tower")]
-        [SerializeField] private int _neighborTowers = 5;
-        [SerializeField] private Vector2 _neighborDistance = new Vector2(35f, 80f);
-        [Tooltip("Height of their roofs relative to the player (always below the ships' flight zone).")]
-        [SerializeField] private Vector2 _neighborRoof = new Vector2(-45f, -18f);
+        [SerializeField] private int _neighborTowers = 6;
+        [SerializeField] private Vector2 _neighborDistance = new Vector2(60f, 260f);
+        [Tooltip("Height of their roofs relative to the player (never above the clearance below the tower top).")]
+        [SerializeField] private Vector2 _neighborRoof = new Vector2(-115f, -100f);
         [SerializeField] private Vector2 _neighborWidth = new Vector2(14f, 20f);
         [SerializeField] private float _beaconBlinkSeconds = 1.2f;
 
@@ -67,15 +72,16 @@ namespace AlienInvaders.Views
             public readonly List<int> Triangles = new List<int>();
         }
 
-        // Facade tints picked per building (the shader multiplies the concrete texture by them).
+        // Facade tints picked per building (the shader multiplies the dark concrete by them): night city blues,
+        // violets and charcoal, like the cyberpunk reference images.
         private static readonly Color[] Palette =
         {
-            new Color(1f, 1f, 1f),
-            new Color(0.97f, 0.93f, 0.85f),
-            new Color(0.84f, 0.86f, 0.88f),
-            new Color(0.8f, 0.86f, 0.95f),
-            new Color(0.92f, 0.86f, 0.76f),
-            new Color(0.68f, 0.7f, 0.74f)
+            new Color(0.55f, 0.58f, 0.68f),
+            new Color(0.5f, 0.46f, 0.6f),
+            new Color(0.42f, 0.44f, 0.5f),
+            new Color(0.62f, 0.6f, 0.66f),
+            new Color(0.45f, 0.5f, 0.62f),
+            new Color(0.6f, 0.52f, 0.5f)
         };
 
         private readonly List<Renderer> _beacons = new List<Renderer>();
@@ -150,7 +156,7 @@ namespace AlienInvaders.Views
         {
             float margin = _streetWidth * 0.5f + _sidewalk;
             float inner = _blockSize - margin * 2f;
-            int split = Next() < 0.35 ? 1 : 2;
+            int split = Next() < 0.45 ? 1 : 2;
             float lot = inner / split;
 
             for (int i = 0; i < split; i++)
@@ -158,8 +164,8 @@ namespace AlienInvaders.Views
                 for (int j = 0; j < split; j++)
                 {
                     float gap = Lerp(0.6f, 2.5f, Next());
-                    float width = (lot - gap) * Lerp(0.7f, 1f, Next());
-                    float depth = (lot - gap) * Lerp(0.7f, 1f, Next());
+                    float width = (lot - gap) * Lerp(0.6f, 0.92f, Next());
+                    float depth = (lot - gap) * Lerp(0.6f, 0.92f, Next());
                     var lotMin = new Vector2(blockMin.x + margin + i * lot, blockMin.y + margin + j * lot);
                     var footprint = new Rect(lotMin.x + (lot - width) * 0.5f, lotMin.y + (lot - depth) * 0.5f, width, depth);
                     float distance = footprint.center.magnitude;
@@ -168,7 +174,7 @@ namespace AlienInvaders.Views
                         continue;
                     }
 
-                    float height = BuildingHeight(distance);
+                    float height = BuildingHeight();
                     var min = new Vector3(footprint.xMin, _groundTop, footprint.yMin);
                     var max = new Vector3(footprint.xMax, _groundTop + height, footprint.yMax);
                     Color tint = Palette[_random.Next(Palette.Length)] * Lerp(0.9f, 1.05f, Next());
@@ -183,18 +189,17 @@ namespace AlienInvaders.Views
             }
         }
 
-        // Taller downtown around the tower, lower towards the edge, with a few tall exceptions.
-        private float BuildingHeight(float distance)
+        // Mostly low and mid rise (squaring the random number favors the low end), with a few tall towers anywhere.
+        private float BuildingHeight()
         {
-            float tallest = Lerp(_tallestNearTower, _tallestAtEdge, Mathf.Clamp01((distance - 20f) / 500f));
-            float height = tallest * Lerp(0.35f, 1f, Next());
-            if (Next() < _outlierChance)
-            {
-                height *= 1.5f;
-            }
-            // Never taller than the neighbor skyscrapers: the player must always look down on the city.
-            return Mathf.Min(height, -_groundTop + _neighborRoof.x);
+            float height = Next() < _tallChance
+                ? Lerp(_tallHeight.x, _tallHeight.y, Next())
+                : Lerp(_typicalHeight.x, _typicalHeight.y, Next() * Next());
+            return Mathf.Min(height, MaxHeight);
         }
+
+        // Tallest a building may be: the street is 200 m down and the player's tower must win by the clearance.
+        private float MaxHeight => -_groundTop - _clearanceBelowTower;
 
         // Air conditioners, water tanks and stair huts: small boxes that show how big a building really is.
         private void AddRoofDetails(MeshBuffer details, Rect roof, float roofY)
@@ -229,7 +234,7 @@ namespace AlienInvaders.Views
 
         private void CreateNeighborTower(Rect footprint)
         {
-            float roof = Lerp(_neighborRoof.x, _neighborRoof.y, Next());
+            float roof = Mathf.Min(Lerp(_neighborRoof.x, _neighborRoof.y, Next()), -_clearanceBelowTower);
             float height = roof - _groundTop;
 
             var tower = GameObject.CreatePrimitive(PrimitiveType.Cube);

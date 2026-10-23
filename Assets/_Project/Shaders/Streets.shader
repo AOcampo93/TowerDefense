@@ -9,6 +9,10 @@ Shader "AlienInvaders/Streets"
         _BlockColor ("City Block", Color) = (0.2, 0.18, 0.17, 1)
         _StreetColor ("Street", Color) = (0.07, 0.07, 0.08, 1)
         _LineColor ("Lane Mark", Color) = (0.55, 0.45, 0.25, 1)
+        _LampColor ("Street Light", Color) = (1, 0.55, 0.18, 1)
+        _LampGlow ("Street Light Strength", Range(0, 4)) = 0
+        _DotChance ("Lit Windows On Far Blocks", Range(0, 1)) = 0
+        _DotColor ("Lit Window Color", Color) = (1, 0.75, 0.4, 1)
         _BlockSize ("Block Size (meters)", Float) = 40
         _StreetWidth ("Street Width (meters)", Float) = 9
     }
@@ -35,6 +39,10 @@ Shader "AlienInvaders/Streets"
                 half4 _BlockColor;
                 half4 _StreetColor;
                 half4 _LineColor;
+                half4 _LampColor;
+                half _LampGlow;
+                half _DotChance;
+                half4 _DotColor;
                 float _BlockSize;
                 float _StreetWidth;
             CBUFFER_END
@@ -89,6 +97,14 @@ Shader "AlienInvaders/Streets"
                 float street = min(fromStreet.x, fromStreet.y);
 
                 half3 color = _StreetColor.rgb;
+                half3 glow = 0;
+                float curb = _StreetWidth * 0.5;
+                if (street < curb + 1.0)
+                {
+                    // Sodium street lights along both curbs, and their orange wash over the asphalt.
+                    float lampLine = exp(-abs(street - curb * 0.8) * 2.5);
+                    glow = _LampColor.rgb * _LampGlow * (0.08 + lampLine);
+                }
                 if (street >= _StreetWidth * 0.5)
                 {
                     // A block: its own shade, with a darker "roof" inset a few meters from the sidewalk.
@@ -96,6 +112,14 @@ Shader "AlienInvaders/Streets"
                     float shade = lerp(0.7, 1.15, Hash(block));
                     bool roof = street > _StreetWidth * 0.5 + 4.0;
                     color = _BlockColor.rgb * shade * (roof ? lerp(0.6, 0.85, Hash(block + 17.0)) : 1.0);
+
+                    // Seen from far away, the lit windows of a block are dots of warm light.
+                    float2 dotCell = floor(input.groundMeters / 4.0);
+                    float2 inDot = frac(input.groundMeters / 4.0);
+                    if (Hash(dotCell + 3.7) < _DotChance && all(abs(inDot - 0.5) < 0.22))
+                    {
+                        glow = _DotColor.rgb * 0.9;
+                    }
                 }
                 // Dashed lane mark in the middle of each street.
                 float2 dashes = frac(input.groundMeters / 6.0);
@@ -106,7 +130,7 @@ Shader "AlienInvaders/Streets"
                     color = _LineColor.rgb;
                 }
 
-                color = MixFog(color * lighting, input.fogFactor);
+                color = MixFog(color * lighting + glow, input.fogFactor);
                 return half4(color, 1.0h);
             }
             ENDHLSL
