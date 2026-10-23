@@ -49,9 +49,11 @@ namespace AlienInvaders.Views
         [SerializeField] private Material _alarmLight;
         [Tooltip("Meters per second the shaft slides past at full speed during the ascent.")]
         [SerializeField] private float _ascentLightSpeed = 7f;
-        [SerializeField] private float _rescueLightSpeed = 9f;
+        [SerializeField] private float _rescueLightSpeed = 14f;
         [Tooltip("Seconds to reach full speed and to stop again, so the ride starts and ends softly.")]
         [SerializeField] private float _rampSeconds = 2.5f;
+        [Tooltip("The emergency cabin drops almost at once and brakes hard at the bottom.")]
+        [SerializeField] private float _rescueRampSeconds = 0.6f;
 
         [Header("Haptics")]
         [Tooltip("Meters of shaft between two pulses (about one floor): the beat speeds up and slows down with the cabin.")]
@@ -86,6 +88,16 @@ namespace AlienInvaders.Views
         /// <summary>Seconds the emergency cabin needs to close around the player at the start of the rescue.</summary>
         public float RescueCloseSeconds => _rescueCloseSeconds;
 
+        /// <summary>
+        /// The emergency cabin has stopped at street level: alarm lights off and no shaft above the dome, ready to
+        /// open in the real room.
+        /// </summary>
+        public void ShowLanded()
+        {
+            SetLightsVisible(false);
+            _shaft.SetActive(false);
+        }
+
         /// <summary>Removes the cabin at once (AR calibration, or any state without an elevator).</summary>
         public void Hide()
         {
@@ -117,7 +129,7 @@ namespace AlienInvaders.Views
         /// </summary>
         public IEnumerator PlayAscent(float seconds)
         {
-            yield return Ride(seconds, -1f, _ascentLightSpeed, _rideLight, _ascentMetersPerPulse, _ascentPulseAmplitude);
+            yield return Ride(seconds, -1f, _ascentLightSpeed, _rampSeconds, _rideLight, _ascentMetersPerPulse, _ascentPulseAmplitude);
         }
 
         /// <summary>
@@ -127,7 +139,7 @@ namespace AlienInvaders.Views
         public IEnumerator PlayRescue(float seconds)
         {
             yield return AnimateCabin(0f, 1f, _rescueCloseSeconds);
-            yield return Ride(seconds, 1f, _rescueLightSpeed, _alarmLight, _rescueMetersPerPulse, _rescuePulseAmplitude);
+            yield return Ride(seconds, 1f, _rescueLightSpeed, _rescueRampSeconds, _alarmLight, _rescueMetersPerPulse, _rescuePulseAmplitude);
         }
 
         private IEnumerator AnimateCabin(float from, float to, float seconds)
@@ -142,7 +154,7 @@ namespace AlienInvaders.Views
         }
 
         // direction: -1 = shaft moves down (cabin going up), +1 = shaft moves up (cabin going down).
-        private IEnumerator Ride(float seconds, float direction, float maxSpeed, Material material,
+        private IEnumerator Ride(float seconds, float direction, float maxSpeed, float rampSeconds, Material material,
             float metersPerPulse, float pulseAmplitude)
         {
             foreach (Renderer strip in _lights)
@@ -153,12 +165,12 @@ namespace AlienInvaders.Views
             _shaft.SetActive(true);
 
             // Length of the whole ride, so the end of the tunnel reaches the dome exactly when the cabin stops.
-            float distance = RideDistance(seconds, maxSpeed);
+            float distance = RideDistance(seconds, maxSpeed, rampSeconds);
             float travelled = 0f;
             float nextPulse = metersPerPulse;
             for (float t = 0f; t < seconds; t += Time.deltaTime)
             {
-                float ramp = Ramp(t, seconds);
+                float ramp = Ramp(t, seconds, rampSeconds);
                 float step = maxSpeed * ramp * Time.deltaTime;
                 travelled += step;
                 _scroll += direction * step;
@@ -179,20 +191,20 @@ namespace AlienInvaders.Views
         }
 
         // Speed factor from 0 to 1: it ramps up at the start and down at the end, like a real elevator.
-        private float Ramp(float t, float seconds)
+        private static float Ramp(float t, float seconds, float rampSeconds)
         {
-            return Mathf.SmoothStep(0f, 1f, Mathf.Min(t, seconds - t) / _rampSeconds);
+            return Mathf.SmoothStep(0f, 1f, Mathf.Min(t, seconds - t) / rampSeconds);
         }
 
         // Meters travelled in a ride of this length (sum of speed x time over small steps).
-        private float RideDistance(float seconds, float maxSpeed)
+        private static float RideDistance(float seconds, float maxSpeed, float rampSeconds)
         {
             const int Steps = 200;
             float dt = seconds / Steps;
             float distance = 0f;
             for (int i = 0; i < Steps; i++)
             {
-                distance += maxSpeed * Ramp((i + 0.5f) * dt, seconds) * dt;
+                distance += maxSpeed * Ramp((i + 0.5f) * dt, seconds, rampSeconds) * dt;
             }
             return distance;
         }

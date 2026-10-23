@@ -22,6 +22,8 @@ namespace AlienInvaders.Views
         private static AudioClip _overheat;
         private static AudioClip _rumble;
         private static AudioClip _alarm;
+        private static AudioClip _beep;
+        private static AudioClip _go;
 
         /// <summary>Loop: buzzing tone of a ship charging its shot (the ShipView raises its pitch).</summary>
         public static AudioClip Charge => _charge != null ? _charge : (_charge = BuildCharge());
@@ -49,6 +51,12 @@ namespace AlienInvaders.Views
 
         /// <summary>Loop: two-tone alarm of the critical state.</summary>
         public static AudioClip Alarm => _alarm != null ? _alarm : (_alarm = BuildAlarm());
+
+        /// <summary>Short clean tone for each number of the countdown.</summary>
+        public static AudioClip Beep => _beep != null ? _beep : (_beep = BuildBeep());
+
+        /// <summary>Rising two-note signal when the ships come out of the portals.</summary>
+        public static AudioClip Go => _go != null ? _go : (_go = BuildGo());
 
         private static AudioClip BuildCharge()
         {
@@ -178,6 +186,32 @@ namespace AlienInvaders.Views
                 data[i] = 0.4f * Tanh(2f * Mathf.Sin(2f * Mathf.PI * frequency * t));
             }
             return ToClip("Alarm", data);
+        }
+
+        private static AudioClip BuildBeep()
+        {
+            float[] data = NewBuffer(0.15f);
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = (float)i / SampleRate;
+                data[i] = 0.5f * Mathf.Sin(2f * Mathf.PI * 880f * t) * Mathf.Clamp01(t / 0.005f) * Mathf.Exp(-t * 12f);
+            }
+            return ToClip("Beep", data);
+        }
+
+        private static AudioClip BuildGo()
+        {
+            // Two quick notes a fifth apart (A5 then E6), the second one held a little longer.
+            float[] data = NewBuffer(0.45f);
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float frequency = t < 0.12f ? 880f : 1318.5f;
+                float local = t < 0.12f ? t : t - 0.12f;
+                data[i] = 0.45f * Tanh(1.5f * Mathf.Sin(2f * Mathf.PI * frequency * t)) *
+                          Mathf.Clamp01(local / 0.005f) * Mathf.Exp(-local * 6f);
+            }
+            return ToClip("Go", data);
         }
 
         private static float[] NewBuffer(float seconds)

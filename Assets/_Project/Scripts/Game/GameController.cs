@@ -291,11 +291,17 @@ namespace AlienInvaders.Game
             Motion.ResetAll();
             yield return fall;
 
-            // The fall ends in black; the real room is switched on behind it.
-            yield return _screenFade.FadeTo(1f, Balance.FadeToBlackSeconds);
-            _elevator.Hide();
+            // Hard stop at street level: a thud and a blink of darkness hide the switch to the real room.
+            ControllerHaptics.PulseBoth(1f, 0.35f);
+            yield return _screenFade.FadeTo(0.9f, Balance.LandingDipSeconds);
             _passthrough.SetImmediate(1f);
+            _elevator.ShowLanded();
             SaveMotionTrack();
+            yield return _screenFade.FadeTo(0f, Balance.LandingRecoverSeconds);
+
+            // The cabin opens in the real room, the same way it was built at the start: the player is back home.
+            yield return _elevator.Open(Balance.ArrivalSeconds);
+            _elevator.Hide();
             EnterState(GameState.Results);
         }
 
@@ -313,7 +319,8 @@ namespace AlienInvaders.Game
             {
                 _results.SetPlayAgainVisible(true);
             }
-            yield return _screenFade.FadeTo(0f, Balance.FadeFromBlackSeconds);
+            // In case the match was ended from a dark screen (it already is clear after the rescue).
+            yield return _screenFade.FadeTo(0f, Balance.LandingRecoverSeconds);
         }
 
         // Writes the motion recorded during the match to motion_yyyyMMdd_HHmmss.json next to the records.

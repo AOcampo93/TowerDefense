@@ -47,11 +47,14 @@ namespace AlienInvaders.Core
         public const float ArrivalSeconds = 5f;
 
         /// <summary>Length of the emergency descent after the collapse (comfort: at most 3 to 5 s of falling).</summary>
-        public const float RescueSeconds = 5f;
+        public const float RescueSeconds = 4f;
 
-        /// <summary>The fall ends in black, the real room is switched on behind it, then the black clears.</summary>
-        public const float FadeToBlackSeconds = 0.6f;
-        public const float FadeFromBlackSeconds = 1.2f;
+        /// <summary>
+        /// The hard stop at the bottom: a quick dip to black that hides the switch to the real room behind the closed
+        /// cabin. Then the cabin opens in the room like it was built at the start.
+        /// </summary>
+        public const float LandingDipSeconds = 0.15f;
+        public const float LandingRecoverSeconds = 0.5f;
 
         // ---------- Weapon ----------
         public const float ShotsPerSecond = 8f;
