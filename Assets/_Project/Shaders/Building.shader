@@ -14,6 +14,7 @@ Shader "AlienInvaders/Building"
         _WindowFill ("Window Share Of The Cell (x, y)", Vector) = (0.55, 0.5, 0, 0)
         _LitChance ("Lit Windows", Range(0, 1)) = 0.25
         _FireChance ("Burning Windows", Range(0, 1)) = 0.04
+        _DetailFade ("Windows Fade Into Average (start, end meters)", Vector) = (300, 600, 0, 0)
     }
 
     SubShader
@@ -44,6 +45,7 @@ Shader "AlienInvaders/Building"
                 float4 _WindowFill;
                 half _LitChance;
                 half _FireChance;
+                float4 _DetailFade;
             CBUFFER_END
 
             struct Attributes
@@ -61,6 +63,7 @@ Shader "AlienInvaders/Building"
                 float3 normalWS : TEXCOORD2;
                 float3 scale : TEXCOORD3;
                 half fogFactor : TEXCOORD4;
+                float distance : TEXCOORD5;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -79,6 +82,7 @@ Shader "AlienInvaders/Building"
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.fogFactor = ComputeFogFactor(output.positionCS.z);
+                output.distance = distance(TransformObjectToWorld(input.positionOS.xyz), GetCameraPositionWS());
                 return output;
             }
 
@@ -112,6 +116,12 @@ Shader "AlienInvaders/Building"
                     bool window = inCell.x < _WindowFill.x * 0.5 && inCell.y < _WindowFill.y * 0.5;
 
                     color = _BaseColor.rgb * lighting;
+                    // Far away the window grid would shimmer on the headset: blend it into its average color.
+                    half area = _WindowFill.x * _WindowFill.y;
+                    half3 windowAverage = _WindowColor.rgb * lighting * (1.0 - _LitChance - _FireChance)
+                                        + _LitColor.rgb * _LitChance * 0.8 + _FireColor.rgb * _FireChance;
+                    half3 farColor = lerp(color, windowAverage, area);
+                    float fade = saturate((input.distance - _DetailFade.x) / max(1.0, _DetailFade.y - _DetailFade.x));
                     if (window)
                     {
                         // The box size makes every building's pattern different without per-object data.
@@ -127,6 +137,7 @@ Shader "AlienInvaders/Building"
                             color = _LitColor.rgb * (0.6 + 0.4 * frac(random * 13.7));
                         }
                     }
+                    color = lerp(color, farColor, fade);
                 }
 
                 color = MixFog(color, input.fogFactor);

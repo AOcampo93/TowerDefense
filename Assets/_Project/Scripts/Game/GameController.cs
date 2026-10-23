@@ -116,11 +116,15 @@ namespace AlienInvaders.Game
 
             State = next;
             Debug.Log($"[Game] Enter {next}");
+            if (next != GameState.Results)
+            {
+                // The results panel belongs to the Results state only, whichever way the game leaves it.
+                _results.Hide();
+            }
 
             switch (next)
             {
                 case GameState.Calibration:
-                    _results.Hide();
                     _screenFade.SetImmediate(0f);
                     _elevator.Hide();
                     _passthrough.SetImmediate(1f);
