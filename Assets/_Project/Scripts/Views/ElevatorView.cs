@@ -62,6 +62,13 @@ namespace AlienInvaders.Views
         [SerializeField] private float _rescueMetersPerPulse = 1f;
         [SerializeField] private float _rescuePulseAmplitude = 1f;
         [SerializeField] private float _pulseSeconds = 0.1f;
+        [Header("Cabin light")]
+        [Tooltip("Real light inside the cabin, so the metal walls catch highlights. Red and pulsing in the rescue.")]
+        [SerializeField] private Light _cabinLight;
+        [SerializeField] private Color _rideLightColor = new Color(1f, 0.88f, 0.72f);
+        [SerializeField] private Color _alarmLightColor = new Color(1f, 0.15f, 0.08f);
+        [SerializeField] private float _cabinLightIntensity = 1.5f;
+
         [Header("Sound")]
         [SerializeField] private GameSounds _sounds;
         [Tooltip("Machinery hum while the cabin moves (its pitch follows the speed) and the door sounds.")]
@@ -100,6 +107,8 @@ namespace AlienInvaders.Views
         /// </summary>
         public void ShowLanded()
         {
+            _cabinLight.color = _rideLightColor;
+            _cabinLight.intensity = _cabinLightIntensity;
             SetLightsVisible(false);
             _shaft.SetActive(false);
         }
@@ -120,6 +129,7 @@ namespace AlienInvaders.Views
         /// </summary>
         public IEnumerator Close(float seconds)
         {
+            _cabinLight.color = _rideLightColor;
             yield return AnimateCabin(0f, 1f, seconds);
             PlayDoor(_sounds.DoorClose);
         }
@@ -148,6 +158,7 @@ namespace AlienInvaders.Views
         /// </summary>
         public IEnumerator PlayRescue(float seconds)
         {
+            _cabinLight.color = _alarmLightColor;
             yield return AnimateCabin(0f, 1f, _rescueCloseSeconds);
             PlayDoor(_sounds.DoorClose);
             yield return Ride(seconds, 1f, _rescueLightSpeed, _rescueRampSeconds, _alarmLight, _rescueMetersPerPulse, _rescuePulseAmplitude);
@@ -200,6 +211,11 @@ namespace AlienInvaders.Views
                 // The machinery hums louder and higher as the cabin speeds up (a falling cabin screams higher).
                 _machine.volume = _machineVolume * ramp;
                 _machine.pitch = Mathf.Lerp(0.6f, 1.1f, ramp) * (direction > 0f ? 1.25f : 1f);
+                if (direction > 0f)
+                {
+                    // Emergency: the red light throbs like a rotating beacon.
+                    _cabinLight.intensity = _cabinLightIntensity * (0.55f + 0.45f * Mathf.Sin(t * 12f));
+                }
 
                 // One pulse every few meters, like passing floor after floor: the beat follows the speed,
                 // and the pulses get stronger as the cabin reaches full speed.
@@ -245,6 +261,9 @@ namespace AlienInvaders.Views
         // 0 = no cabin, 1 = closed cabin.
         private void SetClosedAmount(float amount)
         {
+            // The cabin light grows with the cabin and is off when there is no cabin.
+            _cabinLight.enabled = amount > 0f;
+            _cabinLight.intensity = _cabinLightIntensity * amount;
             SetPlate(_floor, _floorScale, Stage(amount, FloorStage));
             SetWalls(Stage(amount, WallStage));
             SetPlate(_roof, _roofScale, Stage(amount, RoofStage));
