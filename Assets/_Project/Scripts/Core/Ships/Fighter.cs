@@ -9,7 +9,7 @@ namespace AlienInvaders.Core.Ships
     /// </summary>
     public class Fighter : EnemyShip
     {
-        private const float ZigzagAmplitude = 2.5f; // meters
+        private const float ZigzagAmplitude = 6f; // meters
         private const float ZigzagFrequency = 1.5f; // oscillations per second
 
         private float _time;
@@ -48,7 +48,7 @@ namespace AlienInvaders.Core.Ships
                 return forward; // flying straight up or down: no zigzag
             }
 
-            float fade = Math.Min(1f, distance / 8f);
+            float fade = Math.Min(1f, distance / 20f);
             float offsetSpeed = (float)Math.Cos(_time * ZigzagFrequency * 2.0 * Math.PI)
                                 * ZigzagAmplitude * ZigzagFrequency * fade;
             return forward + side * offsetSpeed * deltaTime;

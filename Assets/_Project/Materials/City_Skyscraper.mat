@@ -22,19 +22,30 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _RoofTex:
+        m_Texture: {fileID: 2800000, guid: bf074048b1925472cbed9032ce15f10e, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _WallTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _FireChance: 0.03
-    - _LitChance: 0.3
+    - _LitChance: 0.12
+    - _RoofTile: 12
+    - _UseVertexColor: 0
+    - _WallTile: 8
     m_Colors:
-    - _BaseColor: {r: 0.13, g: 0.15, b: 0.19, a: 1}
+    - _BaseColor: {r: 0.78, g: 0.81, b: 0.86, a: 1}
     - _CellSize: {r: 1.5, g: 3.6, b: 0, a: 0}
     - _DetailFade: {r: 300, g: 600, b: 0, a: 0}
     - _FireColor: {r: 1, g: 0.31999996, b: 0.059999965, a: 1}
     - _LitColor: {r: 0.85, g: 0.88, b: 1, a: 1}
-    - _RoofColor: {r: 0.1, g: 0.1, b: 0.11, a: 1}
-    - _WindowColor: {r: 0.05, g: 0.07, b: 0.1, a: 1}
+    - _RoofColor: {r: 0.7, g: 0.72, b: 0.75, a: 1}
+    - _WindowColor: {r: 0.35, g: 0.45, b: 0.58, a: 1}
     - _WindowFill: {r: 0.82, g: 0.72, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

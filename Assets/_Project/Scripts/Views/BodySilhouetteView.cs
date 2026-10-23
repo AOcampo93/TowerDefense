@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// The player's own body in VR, as a dark silhouette with a glowing outline. The Quest 3 cameras track the upper
+    /// The player's own body in VR, as a see-through light silhouette with a white outline, like the Quest system hands. The Quest 3 cameras track the upper
     /// body and the system estimates the legs (OVRBody, full body joint set); this view draws a capsule between pairs
     /// of joints: torso, arms, every finger and the legs. So the blaster is held by a hand and the radar sits on a
     /// wrist instead of floating in the air. In AR the real body is visible, so the silhouette only shows in VR.
@@ -34,6 +34,8 @@ namespace AlienInvaders.Views
         [Tooltip("Center eye: pieces whose surface comes this close to it are hidden, so the body never blocks the view.")]
         [SerializeField] private Transform _head;
         [SerializeField] private Mesh _segmentMesh;
+        [Tooltip("Depth-only material drawn first, so the see-through body shows a single surface.")]
+        [SerializeField] private Material _depthMaterial;
         [SerializeField] private Material _material;
         [SerializeField] private float _headClearance = 0.15f;
 
@@ -154,7 +156,8 @@ namespace AlienInvaders.Views
             piece.transform.SetParent(_root, false);
             piece.GetComponent<MeshFilter>().sharedMesh = _segmentMesh;
             var meshRenderer = piece.GetComponent<MeshRenderer>();
-            meshRenderer.sharedMaterial = _material;
+            // Two materials on one mesh draw it twice: depth for the whole body first (earlier queue), then color.
+            meshRenderer.sharedMaterials = new[] { _depthMaterial, _material };
             meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             meshRenderer.receiveShadows = false;
             return piece.transform;

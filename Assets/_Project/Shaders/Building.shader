@@ -1,17 +1,22 @@
-// Greybox building that reads as a building: walls lit by the low sun, a grid of windows (a few lit, a few on fire
-// and flickering) and darker roofs. The windows are computed from the object's own space in meters, so boxes of any
+// Building that reads as a building: concrete walls and gravel roofs (textures sized in meters), lit by the sun,
+// with a grid of windows (a few lit, a few on fire and flickering). The windows are computed from the object's own space in meters, so boxes of any
 // size get the right number of floors and the pattern stays glued to the walls while the city leans.
 Shader "AlienInvaders/Building"
 {
     Properties
     {
-        _BaseColor ("Wall", Color) = (0.24, 0.22, 0.22, 1)
-        _RoofColor ("Roof", Color) = (0.12, 0.11, 0.11, 1)
+        _BaseColor ("Wall Tint", Color) = (0.24, 0.22, 0.22, 1)
+        _RoofColor ("Roof Tint", Color) = (0.12, 0.11, 0.11, 1)
+        [NoScaleOffset] _WallTex ("Wall Texture", 2D) = "white" {}
+        [NoScaleOffset] _RoofTex ("Roof Texture", 2D) = "white" {}
+        _WallTile ("Wall Texture Size (meters)", Float) = 8
+        _RoofTile ("Roof Texture Size (meters)", Float) = 12
         _WindowColor ("Dark Window", Color) = (0.04, 0.05, 0.07, 1)
         _LitColor ("Lit Window", Color) = (1, 0.68, 0.32, 1)
         _FireColor ("Burning Window", Color) = (1, 0.32, 0.06, 1)
         _CellSize ("Window Cell (width, height in meters)", Vector) = (2.5, 3.2, 0, 0)
         _WindowFill ("Window Share Of The Cell (x, y)", Vector) = (0.55, 0.5, 0, 0)
+        _UseVertexColor ("Tint Each Building With Its Vertex Color", Range(0, 1)) = 0
         _LitChance ("Lit Windows", Range(0, 1)) = 0.25
         _FireChance ("Burning Windows", Range(0, 1)) = 0.04
         _DetailFade ("Windows Fade Into Average (start, end meters)", Vector) = (300, 600, 0, 0)
@@ -35,7 +40,14 @@ Shader "AlienInvaders/Building"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
+            TEXTURE2D(_WallTex);
+            SAMPLER(sampler_WallTex);
+            TEXTURE2D(_RoofTex);
+            SAMPLER(sampler_RoofTex);
+
             CBUFFER_START(UnityPerMaterial)
+                float _WallTile;
+                float _RoofTile;
                 half4 _BaseColor;
                 half4 _RoofColor;
                 half4 _WindowColor;
@@ -45,6 +57,7 @@ Shader "AlienInvaders/Building"
                 float4 _WindowFill;
                 half _LitChance;
                 half _FireChance;
+                half _UseVertexColor;
                 float4 _DetailFade;
             CBUFFER_END
 
@@ -52,12 +65,14 @@ Shader "AlienInvaders/Building"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
+                half4 color : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
+                half3 tint : COLOR;
                 float3 positionMeters : TEXCOORD0; // object space scaled to meters, base of the box at y = 0
                 float3 normalOS : TEXCOORD1;
                 float3 normalWS : TEXCOORD2;
@@ -77,6 +92,8 @@ Shader "AlienInvaders/Building"
                 float3 scale = float3(length(UNITY_MATRIX_M._m00_m10_m20), length(UNITY_MATRIX_M._m01_m11_m21),
                                       length(UNITY_MATRIX_M._m02_m12_m22));
                 output.scale = scale;
+                // Merged city meshes carry one color per building, so the blocks are not all the same white.
+                output.tint = lerp(half3(1.0, 1.0, 1.0), input.color.rgb, _UseVertexColor);
                 output.positionMeters = (input.positionOS.xyz + float3(0.0, 0.5, 0.0)) * scale;
                 output.normalOS = input.normalOS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
@@ -104,7 +121,8 @@ Shader "AlienInvaders/Building"
                 half3 color;
                 if (abs(input.normalOS.y) > 0.5)
                 {
-                    color = _RoofColor.rgb * lighting;
+                    half3 roof = SAMPLE_TEXTURE2D(_RoofTex, sampler_RoofTex, input.positionMeters.xz / _RoofTile).rgb;
+                    color = _RoofColor.rgb * input.tint * roof * lighting;
                 }
                 else
                 {
@@ -115,7 +133,8 @@ Shader "AlienInvaders/Building"
                     float2 inCell = abs(frac(grid) - 0.5);
                     bool window = inCell.x < _WindowFill.x * 0.5 && inCell.y < _WindowFill.y * 0.5;
 
-                    color = _BaseColor.rgb * lighting;
+                    half3 wall = SAMPLE_TEXTURE2D(_WallTex, sampler_WallTex, float2(grid.x * _CellSize.x, input.positionMeters.y) / _WallTile).rgb;
+                    color = _BaseColor.rgb * input.tint * wall * lighting;
                     // Far away the window grid would shimmer on the headset: blend it into its average color.
                     half area = _WindowFill.x * _WindowFill.y;
                     half3 windowAverage = _WindowColor.rgb * lighting * (1.0 - _LitChance - _FireChance)

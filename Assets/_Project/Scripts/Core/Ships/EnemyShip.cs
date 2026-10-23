@@ -13,7 +13,7 @@ namespace AlienInvaders.Core.Ships
     public abstract class EnemyShip
     {
         private const float EmergeSeconds = 1f;
-        private const float ArrivalDistance = 0.75f;
+        private const float ArrivalDistance = 2f;
 
         protected readonly Random Random;
         private float _phaseTimer;

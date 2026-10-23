@@ -66,8 +66,8 @@ namespace AlienInvaders.Core
         /// <summary>Radius of the shot's sphere cast (meters): a slight aim assist, so a near miss still hits.</summary>
         public const float AimAssistRadius = 0.15f;
 
-        /// <summary>Reach of a shot (meters). Ships fly 15 to 40 m away, so a fair shot is never cut short.</summary>
-        public const float WeaponRange = 200f;
+        /// <summary>Reach of a shot (meters). Ships fly 45 to 95 m away, so a fair shot is never cut short.</summary>
+        public const float WeaponRange = 500f;
 
         /// <summary>Damage of one shot (a fighter falls with one hit, a bomber needs three).</summary>
         public const int ShotDamage = 1;
@@ -86,20 +86,27 @@ namespace AlienInvaders.Core
 
         // ---------- Ships ----------
         public const int FighterHealth = 1;
-        public const float FighterSpeed = 6f;
+        public const float FighterSpeed = 16f;
         public const float FighterAimTime = 1.5f;
         public const float FighterDamage = 2f;
 
         public const int BomberHealth = 3;
-        public const float BomberSpeed = 3f;
+        public const float BomberSpeed = 8f;
         public const float BomberAimTime = 2.5f;
         public const float BomberDamage = 6f;
 
-        /// <summary>Flight zone around the tower (meters, relative to the player platform).</summary>
-        public const float MinFlightRadius = 15f;
-        public const float MaxFlightRadius = 40f;
-        public const float MinFlightHeight = -5f;
-        public const float MaxFlightHeight = 15f;
+        /// <summary>
+        /// Flight zone around the tower (meters, relative to the player platform). The ships are huge (a fighter is
+        /// about 26 m across, a bomber about 48 m long), so they keep their distance to fit in view.
+        /// </summary>
+        public const float MinFlightRadius = 45f;
+        public const float MaxFlightRadius = 95f;
+        public const float MinFlightHeight = -20f;
+        public const float MaxFlightHeight = 35f;
+
+        /// <summary>Distance range (meters) where portals open in the sky, beyond the flight zone.</summary>
+        public const float MinPortalDistance = 140f;
+        public const float MaxPortalDistance = 180f;
 
         /// <summary>
         /// Half width of the square tower (meters). Used to find impact points on the facade. The tower is

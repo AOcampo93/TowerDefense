@@ -71,8 +71,8 @@ namespace AlienInvaders.Core
                 result.Add(new PortalPlacement
                 {
                     AzimuthDegrees = (baseAngle + slice * i + jitter) % 360f,
-                    ElevationDegrees = 10f + (float)random.NextDouble() * 25f,
-                    Distance = 35f + (float)random.NextDouble() * 10f
+                    ElevationDegrees = 4f + (float)random.NextDouble() * 14f,
+                    Distance = Balance.MinPortalDistance + (float)random.NextDouble() * (Balance.MaxPortalDistance - Balance.MinPortalDistance)
                 });
             }
 

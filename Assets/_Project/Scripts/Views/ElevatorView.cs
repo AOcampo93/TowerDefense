@@ -63,9 +63,9 @@ namespace AlienInvaders.Views
         [SerializeField] private float _rescuePulseAmplitude = 1f;
         [SerializeField] private float _pulseSeconds = 0.1f;
         [Header("Cabin light")]
-        [Tooltip("Real light inside the cabin, so the metal walls catch highlights. Red and pulsing in the rescue.")]
+        [Tooltip("Real light inside the cabin, so the steel walls catch highlights: electric blue for the ride, red and pulsing in the rescue.")]
         [SerializeField] private Light _cabinLight;
-        [SerializeField] private Color _rideLightColor = new Color(1f, 0.88f, 0.72f);
+        [SerializeField] private Color _rideLightColor = new Color(0.5f, 0.72f, 1f);
         [SerializeField] private Color _alarmLightColor = new Color(1f, 0.15f, 0.08f);
         [SerializeField] private float _cabinLightIntensity = 1.5f;
 

@@ -1,6 +1,7 @@
-// Ground of the city seen from 60 m up: city blocks separated by darker streets with faint lane marks. The grid is
-// drawn in the object's own space in meters, so it is glued to the ground while the city leans. A regular street
-// grid is a strong depth cue: the player can judge how far down the ground is.
+// Ground of the city seen from far above: city blocks separated by darker streets with faint lane marks. Each block
+// gets its own brightness and a darker inner roof, so beyond the 3D buildings the ground still reads as dense city
+// all the way into the haze. The grid is drawn in the object's own space in meters, so it is glued to the ground
+// while the city leans. A regular street grid is a strong depth cue: the player can judge how far down it is.
 Shader "AlienInvaders/Streets"
 {
     Properties
@@ -68,6 +69,13 @@ Shader "AlienInvaders/Streets"
                 return output;
             }
 
+            float Hash(float2 p)
+            {
+                p = frac(p * float2(0.1031, 0.1030));
+                p += dot(p, p.yx + 33.33);
+                return frac((p.x + p.y) * p.x);
+            }
+
             half4 Frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -80,7 +88,15 @@ Shader "AlienInvaders/Streets"
                 float2 fromStreet = _BlockSize * 0.5 - local;
                 float street = min(fromStreet.x, fromStreet.y);
 
-                half3 color = street < _StreetWidth * 0.5 ? _StreetColor.rgb : _BlockColor.rgb;
+                half3 color = _StreetColor.rgb;
+                if (street >= _StreetWidth * 0.5)
+                {
+                    // A block: its own shade, with a darker "roof" inset a few meters from the sidewalk.
+                    float2 block = floor(input.groundMeters / _BlockSize);
+                    float shade = lerp(0.7, 1.15, Hash(block));
+                    bool roof = street > _StreetWidth * 0.5 + 4.0;
+                    color = _BlockColor.rgb * shade * (roof ? lerp(0.6, 0.85, Hash(block + 17.0)) : 1.0);
+                }
                 // Dashed lane mark in the middle of each street.
                 float2 dashes = frac(input.groundMeters / 6.0);
                 bool laneX = fromStreet.x < 0.25 && dashes.y < 0.5;

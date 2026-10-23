@@ -8,7 +8,8 @@ namespace AlienInvaders.Views
     /// Tactical watch on the left wrist (diegetic radar, no HUD). It is a small disc that turns towards the eyes, with
     /// the player in the middle and "where I am looking" always at the top: red blips are ships (blinking while they
     /// aim at the tower), purple blips are portals (pulsing, also while they open). Ships beyond the range stick to
-    /// the edge, so threats behind the player are never invisible.
+    /// the edge, so threats behind the player are never invisible. A ring around the dial shows the tower's integrity
+    /// (green, yellow, red, blinking when critical), so the player's only "life" is on the wrist too.
     /// </summary>
     public class RadarView : MonoBehaviour
     {
@@ -26,26 +27,42 @@ namespace AlienInvaders.Views
 
         [Header("Scale")]
         [Tooltip("Radius of the disc in meters (a 10 cm watch).")]
-        [SerializeField] private float _radius = 0.045f;
+        [SerializeField] private float _radius = 0.055f;
         [Tooltip("Meters of the real world shown from the center to the edge.")]
-        [SerializeField] private float _range = 50f;
+        [SerializeField] private float _range = 150f;
         [SerializeField] private int _maxShipBlips = 56;
 
         [Header("Feel")]
-        [SerializeField] private float _fighterBlipSize = 0.005f;
-        [SerializeField] private float _bomberBlipSize = 0.008f;
-        [SerializeField] private float _portalBlipSize = 0.011f;
+        [SerializeField] private float _fighterBlipSize = 0.007f;
+        [SerializeField] private float _bomberBlipSize = 0.011f;
+        [SerializeField] private float _portalBlipSize = 0.015f;
         [SerializeField] private float _aimBlinkRate = 6f;
         [SerializeField] private float _portalPulseRate = 1.5f;
 
+        [Header("Integrity ring")]
+        [Tooltip("Arc around the dial, in the dial's local space; full circle = full integrity.")]
+        [SerializeField] private LineRenderer _integrityRing;
+        [SerializeField] private float _ringRadius = 0.062f;
+        [SerializeField] private int _ringSegments = 64;
+        [SerializeField] private Color _healthyColor = new Color(0.2f, 0.95f, 0.3f);
+        [SerializeField] private Color _damagedColor = new Color(1f, 0.85f, 0.1f);
+        [SerializeField] private Color _criticalColor = new Color(1f, 0.1f, 0.05f);
+        [SerializeField] private float _criticalBlinkRate = 2f;
+        [Tooltip("Integrity points per second the ring drains towards the real value.")]
+        [SerializeField] private float _drainSpeed = 30f;
+
         private Transform[] _shipBlips;
         private Transform[] _portalBlips;
+        private Vector3[] _ringPoints;
+        private float _shownIntegrity = Balance.MaxIntegrity;
+        private float _drawnIntegrity = -1f;
 
         private void Awake()
         {
             // All blips are created while loading and reused every frame (no allocations during the fight).
             _shipBlips = CreateBlips(_shipBlipPrefab, _maxShipBlips);
             _portalBlips = CreateBlips(_portalBlipPrefab, Balance.MaxPortals);
+            _ringPoints = new Vector3[_ringSegments + 1];
             _display.SetActive(false);
         }
 
@@ -61,7 +78,14 @@ namespace AlienInvaders.Views
 
         private void HandleStateChanged(GameState state)
         {
-            _display.SetActive(state == GameState.Arrival || _game.InFight);
+            bool visible = state == GameState.Arrival || _game.InFight;
+            if (visible && !_display.activeSelf)
+            {
+                // A new match starts with a full ring.
+                _shownIntegrity = _game.Tower.Integrity;
+                _drawnIntegrity = -1f;
+            }
+            _display.SetActive(visible);
         }
 
         private void LateUpdate()
@@ -103,6 +127,34 @@ namespace AlienInvaders.Views
                 PlaceBlip(_portalBlips[i], portal.transform.position, toHeading, size, true);
             }
             HideFrom(_portalBlips, portals);
+
+            UpdateIntegrityRing();
+        }
+
+        // Clockwise arc from the top of the dial; its length is the integrity.
+        private void UpdateIntegrityRing()
+        {
+            _shownIntegrity = Mathf.MoveTowards(_shownIntegrity, _game.Tower.Integrity, _drainSpeed * Time.deltaTime);
+            if (Mathf.Abs(_shownIntegrity - _drawnIntegrity) > 0.05f)
+            {
+                _drawnIntegrity = _shownIntegrity;
+                float sweep = Mathf.Clamp01(_shownIntegrity / Balance.MaxIntegrity) * Mathf.PI * 2f;
+                for (int i = 0; i <= _ringSegments; i++)
+                {
+                    float angle = sweep * i / _ringSegments;
+                    _ringPoints[i] = new Vector3(Mathf.Sin(angle) * _ringRadius, Mathf.Cos(angle) * _ringRadius, -0.002f);
+                }
+                _integrityRing.positionCount = _ringSegments + 1;
+                _integrityRing.SetPositions(_ringPoints);
+            }
+
+            bool blinkOff = _game.Tower.IsCritical && Mathf.Repeat(Time.time * _criticalBlinkRate, 1f) >= 0.5f;
+            Color color = _shownIntegrity >= 50f
+                ? Color.Lerp(_damagedColor, _healthyColor, Mathf.InverseLerp(50f, 75f, _shownIntegrity))
+                : Color.Lerp(_criticalColor, _damagedColor, Mathf.InverseLerp(25f, 50f, _shownIntegrity));
+            _integrityRing.enabled = !blinkOff && _shownIntegrity > 0f;
+            _integrityRing.startColor = color;
+            _integrityRing.endColor = color;
         }
 
         // Puts a blip on the disc for a world position: right = right of the player's heading, up = ahead.

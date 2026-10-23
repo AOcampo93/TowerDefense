@@ -26,9 +26,9 @@ namespace AlienInvaders.Game
         [SerializeField] private int _prewarmBombers = 16;
 
         [Header("Explosions (meters)")]
-        [SerializeField] private float _fighterExplosionSize = 6f;
-        [SerializeField] private float _bomberExplosionSize = 9f;
-        [SerializeField] private float _impactExplosionSize = 2f;
+        [SerializeField] private float _fighterExplosionSize = 30f;
+        [SerializeField] private float _bomberExplosionSize = 60f;
+        [SerializeField] private float _impactExplosionSize = 3f;
 
         [Header("Debug")]
         [Tooltip("Editor only: the F key spawns one Fighter during the fight.")]
@@ -79,7 +79,7 @@ namespace AlienInvaders.Game
         public ShipController SpawnDebugFighter()
         {
             float azimuth = (float)(_debugRandom.NextDouble() * 360.0);
-            System.Numerics.Vector3 position = EnemyShip.FromAzimuth(azimuth, 35f, 15f);
+            System.Numerics.Vector3 position = EnemyShip.FromAzimuth(azimuth, Balance.MinPortalDistance, 30f);
             return Spawn(ShipType.Fighter, position, WaveGenerator.Build(1, _debugRandom.Next()), _debugRandom);
         }
 

@@ -63,8 +63,20 @@ namespace AlienInvaders.Views
         {
             public readonly List<Vector3> Vertices = new List<Vector3>();
             public readonly List<Vector3> Normals = new List<Vector3>();
+            public readonly List<Color> Colors = new List<Color>();
             public readonly List<int> Triangles = new List<int>();
         }
+
+        // Facade tints picked per building (the shader multiplies the concrete texture by them).
+        private static readonly Color[] Palette =
+        {
+            new Color(1f, 1f, 1f),
+            new Color(0.97f, 0.93f, 0.85f),
+            new Color(0.84f, 0.86f, 0.88f),
+            new Color(0.8f, 0.86f, 0.95f),
+            new Color(0.92f, 0.86f, 0.76f),
+            new Color(0.68f, 0.7f, 0.74f)
+        };
 
         private readonly List<Renderer> _beacons = new List<Renderer>();
         private System.Random _random;
@@ -159,7 +171,8 @@ namespace AlienInvaders.Views
                     float height = BuildingHeight(distance);
                     var min = new Vector3(footprint.xMin, _groundTop, footprint.yMin);
                     var max = new Vector3(footprint.xMax, _groundTop + height, footprint.yMax);
-                    AddBox(buildings, min, max);
+                    Color tint = Palette[_random.Next(Palette.Length)] * Lerp(0.9f, 1.05f, Next());
+                    AddBox(buildings, min, max, tint);
                     roofs.Add(new Vector3(footprint.center.x, max.y, footprint.center.y));
 
                     if (distance < _roofDetailRadius)
@@ -194,7 +207,7 @@ namespace AlienInvaders.Views
                 float h = Lerp(1f, 3.5f, Next());
                 float x = Lerp(roof.xMin + w * 0.5f + 0.5f, roof.xMax - w * 0.5f - 0.5f, Next());
                 float z = Lerp(roof.yMin + d * 0.5f + 0.5f, roof.yMax - d * 0.5f - 0.5f, Next());
-                AddBox(details, new Vector3(x - w * 0.5f, roofY, z - d * 0.5f), new Vector3(x + w * 0.5f, roofY + h, z + d * 0.5f));
+                AddBox(details, new Vector3(x - w * 0.5f, roofY, z - d * 0.5f), new Vector3(x + w * 0.5f, roofY + h, z + d * 0.5f), Color.white);
             }
         }
 
@@ -283,6 +296,7 @@ namespace AlienInvaders.Views
             }
             mesh.SetVertices(buffer.Vertices);
             mesh.SetNormals(buffer.Normals);
+            mesh.SetColors(buffer.Colors);
             mesh.SetTriangles(buffer.Triangles, 0);
             mesh.RecalculateBounds();
 
@@ -300,8 +314,9 @@ namespace AlienInvaders.Views
         }
 
         // A box without its bottom face (never seen). Each face is listed clockwise as seen from outside.
-        private static void AddBox(MeshBuffer buffer, Vector3 min, Vector3 max)
+        private static void AddBox(MeshBuffer buffer, Vector3 min, Vector3 max, Color color)
         {
+            int first = buffer.Vertices.Count;
             AddQuad(buffer, Vector3.up, new Vector3(min.x, max.y, min.z), new Vector3(min.x, max.y, max.z),
                 new Vector3(max.x, max.y, max.z), new Vector3(max.x, max.y, min.z));
             AddQuad(buffer, Vector3.forward, new Vector3(max.x, min.y, max.z), new Vector3(max.x, max.y, max.z),
@@ -312,6 +327,10 @@ namespace AlienInvaders.Views
                 new Vector3(max.x, max.y, max.z), new Vector3(max.x, min.y, max.z));
             AddQuad(buffer, Vector3.left, new Vector3(min.x, min.y, max.z), new Vector3(min.x, max.y, max.z),
                 new Vector3(min.x, max.y, min.z), new Vector3(min.x, min.y, min.z));
+            for (int i = first; i < buffer.Vertices.Count; i++)
+            {
+                buffer.Colors.Add(color);
+            }
         }
 
         private static void AddQuad(MeshBuffer buffer, Vector3 normal, Vector3 a, Vector3 b, Vector3 c, Vector3 d)
