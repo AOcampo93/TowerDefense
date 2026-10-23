@@ -6,8 +6,8 @@ namespace AlienInvaders.Views
     /// <summary>
     /// The clouds all around the horizon, so the line between the ground and the sky disappears in every direction:
     /// a low band of wide clouds right on the horizon, and huge storm clouds (cumulonimbus) of different shapes and
-    /// sizes rising from it. Every cloud is a flat picture (one of the four shapes of a 2 x 2 atlas) standing still in
-    /// the world and turned towards the tower, all merged into one mesh built once from a fixed seed. They never
+    /// sizes rising from it. Every cloud is a flat picture (one cell of a cloud atlas) standing still in the world and
+    /// turned towards the tower, all merged into one mesh built once from a fixed seed. They never
     /// turn with the player's head, so they stay put like real clouds. Clouds facing the setting sun are tinted pink,
     /// the others violet.
     /// </summary>
@@ -16,10 +16,14 @@ namespace AlienInvaders.Views
     {
         // Height of the flat base inside each cloud picture (share of the picture, from its bottom edge).
         private const float BaseInPicture = 0.12f;
-        // The wide, low cloud of the atlas (bottom left cell).
-        private const int WideShape = 0;
 
         [SerializeField] private int _seed = 31;
+
+        [Header("Cloud atlas")]
+        [Tooltip("Cells of the cloud atlas: columns and rows. Cells are numbered from the bottom left, row by row.")]
+        [SerializeField] private Vector2Int _atlasCells = new Vector2Int(4, 2);
+        [Tooltip("Cells with wide, flat clouds, used for the low band on the horizon.")]
+        [SerializeField] private int[] _bandShapes = { 0, 1, 2 };
 
         [Header("Storm clouds")]
         [SerializeField] private int _clouds = 40;
@@ -66,12 +70,12 @@ namespace AlienInvaders.Views
             for (int c = 0; c < _bandClouds; c++)
             {
                 float azimuth = (c + Lerp(-0.5f, 0.5f, Next())) * 360f / _bandClouds;
-                clouds.Add(NewCloud(azimuth, _bandDistance, _bandBase, _bandSize, WideShape));
+                clouds.Add(NewCloud(azimuth, _bandDistance, _bandBase, _bandSize, _bandShapes[_random.Next(_bandShapes.Length)]));
             }
             for (int c = 0; c < _clouds; c++)
             {
                 float azimuth = (c + Lerp(-0.45f, 0.45f, Next())) * 360f / _clouds;
-                clouds.Add(NewCloud(azimuth, _distance, _baseHeight, _cloudSize, _random.Next(4)));
+                clouds.Add(NewCloud(azimuth, _distance, _baseHeight, _cloudSize, _random.Next(_atlasCells.x * _atlasCells.y)));
             }
             // Transparent pictures must be drawn from the farthest to the nearest; the player is always at the center.
             clouds.Sort((a, b) => b.Distance.CompareTo(a.Distance));
@@ -121,12 +125,14 @@ namespace AlienInvaders.Views
             vertices.Add(bottom + right + up);
             vertices.Add(bottom + right);
 
-            // Cell of the 2 x 2 atlas, a hair inside its borders so neighbors never bleed in.
+            // Cell of the atlas, a hair inside its borders so neighbors never bleed in.
             const float Inset = 0.002f;
-            float u0 = (cloud.Shape % 2) * 0.5f + Inset;
-            float u1 = u0 + 0.5f - Inset * 2f;
-            float v0 = (cloud.Shape / 2) * 0.5f + Inset;
-            float v1 = v0 + 0.5f - Inset * 2f;
+            float cellWidth = 1f / _atlasCells.x;
+            float cellHeight = 1f / _atlasCells.y;
+            float u0 = (cloud.Shape % _atlasCells.x) * cellWidth + Inset;
+            float u1 = u0 + cellWidth - Inset * 2f;
+            float v0 = (cloud.Shape / _atlasCells.x) * cellHeight + Inset;
+            float v1 = v0 + cellHeight - Inset * 2f;
             if (cloud.Mirrored)
             {
                 (u0, u1) = (u1, u0);

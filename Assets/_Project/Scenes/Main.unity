@@ -256,17 +256,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.CloudRingView
   _seed: 31
-  _clouds: 40
+  _atlasCells: {x: 4, y: 2}
+  _bandShapes: 000000000100000002000000
+  _clouds: 34
   _distance: {x: 620, y: 880}
   _baseHeight: {x: -250, y: -205}
-  _cloudSize: {x: 260, y: 520}
-  _bandClouds: 70
+  _cloudSize: {x: 520, y: 950}
+  _bandClouds: 50
   _bandDistance: {x: 700, y: 900}
   _bandBase: {x: -245, y: -220}
-  _bandSize: {x: 200, y: 360}
+  _bandSize: {x: 380, y: 650}
   _sunAzimuth: 14.4
-  _litColor: {r: 1, g: 0.72, b: 0.52, a: 1}
-  _shadeColor: {r: 0.86, g: 0.46, b: 0.86, a: 1}
+  _litColor: {r: 1, g: 0.92, b: 0.82, a: 1}
+  _shadeColor: {r: 0.86, g: 0.8, b: 0.96, a: 1}
 --- !u!23 &29759515
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -12186,7 +12188,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.CloudBankView
   _radius: 900
   _bottom: -260
-  _top: 70
+  _top: 10
   _segments: 96
 --- !u!23 &913401503
 MeshRenderer:

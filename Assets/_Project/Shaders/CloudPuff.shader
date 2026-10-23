@@ -1,11 +1,12 @@
-// One big cloud picture (a 2 x 2 atlas of cumulus shapes) for the clouds around the horizon. The picture carries
+// One big cloud picture (a cell of a cloud atlas) for the clouds around the horizon. The picture carries
 // its own shading (lit top, darker base); the vertex color tints it, and its base melts into the fog so the clouds
 // rise out of the haze with no visible line where the city ends.
 Shader "AlienInvaders/CloudPuff"
 {
     Properties
     {
-        _MainTex ("Cloud Atlas (2 x 2)", 2D) = "white" {}
+        _MainTex ("Cloud Atlas", 2D) = "white" {}
+        _AtlasRows ("Rows Of The Atlas", Float) = 2
         _Brightness ("Brightness", Range(0.5, 2)) = 1.2
         _Haze ("Haze Everywhere", Range(0, 1)) = 0.2
         _BottomHaze ("Extra Haze Towards The Base", Range(0, 1)) = 0.6
@@ -35,6 +36,7 @@ Shader "AlienInvaders/CloudPuff"
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
                 half _Brightness;
+                float _AtlasRows;
                 half _Haze;
                 half _BottomHaze;
             CBUFFER_END
@@ -71,8 +73,8 @@ Shader "AlienInvaders/CloudPuff"
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 half4 cloud = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
-                // Height inside this sprite's own cell of the 2 x 2 atlas: 0 at the base, 1 at the top.
-                half height = frac(input.uv.y * 2.0);
+                // Height inside this picture's own cell of the atlas: 0 at the bottom, 1 at the top.
+                half height = frac(input.uv.y * _AtlasRows);
                 half3 color = cloud.rgb * input.color.rgb * _Brightness;
                 color = lerp(color, unity_FogColor.rgb, saturate(_Haze + (1.0 - height) * _BottomHaze));
                 return half4(color, cloud.a * input.color.a);
