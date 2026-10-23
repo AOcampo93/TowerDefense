@@ -26,6 +26,8 @@ namespace AlienInvaders.Game
         [Tooltip("Components that implement IMotionOutput (camera, haptics, future platform). Disabled ones are skipped.")]
         [SerializeField] private MonoBehaviour[] _motionOutputs;
 
+        private const string LastInitialsKey = "records.initials";
+
         private float _motionTimer;
         private MatchResult _lastResult;
 
@@ -47,6 +49,7 @@ namespace AlienInvaders.Game
         public WaveCycle WaveCycle { get; private set; }
         public MotionBus Motion { get; private set; }
         public HighScoreTable Records { get; private set; }
+        public MotionRecorder Recorder { get; private set; }
 
         private void Awake()
         {
@@ -67,6 +70,10 @@ namespace AlienInvaders.Game
             // Structural thresholds drive the end of the match: 25 % = critical, 0 % = collapse and rescue.
             Tower.OnThresholdReached += HandleThreshold;
 
+            // The recorder is one more motion output: the whole match is saved as a motion track for the future platform.
+            Recorder = new MotionRecorder();
+            Motion.Register(Recorder);
+
             // Unity cannot show interface fields in the inspector, so outputs are plain components checked here.
             foreach (MonoBehaviour behaviour in _motionOutputs)
             {
@@ -81,12 +88,14 @@ namespace AlienInvaders.Game
         {
             _calibration.OnCalibrated += HandleCalibrated;
             _results.OnPlayAgain += HandlePlayAgain;
+            _results.OnInitialsConfirmed += HandleInitialsConfirmed;
         }
 
         private void OnDisable()
         {
             _calibration.OnCalibrated -= HandleCalibrated;
             _results.OnPlayAgain -= HandlePlayAgain;
+            _results.OnInitialsConfirmed -= HandleInitialsConfirmed;
         }
 
         private void Start()
@@ -212,6 +221,32 @@ namespace AlienInvaders.Game
             }
         }
 
+        private void HandleInitialsConfirmed(string initials)
+        {
+            if (State != GameState.Results)
+            {
+                return;
+            }
+
+            _lastResult.Initials = initials;
+            int place = Records.Add(_lastResult);
+            try
+            {
+                Records.Save();
+            }
+            catch (Exception e)
+            {
+                // A full or read-only disk must not freeze the results screen.
+                Debug.LogWarning($"[Game] Could not save records: {e.Message}");
+            }
+            PlayerPrefs.SetString(LastInitialsKey, initials);
+            PlayerPrefs.Save();
+            Debug.Log($"[Game] Record saved: {initials} in place {place + 1}");
+
+            _results.ShowTable(Records.Entries, place);
+            _results.SetPlayAgainVisible(true);
+        }
+
         /// <summary>Puts every system back to the start, so "Play again" begins a clean match.</summary>
         private void ResetMatch()
         {
@@ -223,6 +258,7 @@ namespace AlienInvaders.Game
             _ships.ClearAll();
             _portals.StopAll();
             Motion.ResetAll();
+            Recorder.Clear();
             _motionTimer = 0f;
         }
 
@@ -259,6 +295,7 @@ namespace AlienInvaders.Game
             yield return _screenFade.FadeTo(1f, Balance.FadeToBlackSeconds);
             _elevator.Hide();
             _passthrough.SetImmediate(1f);
+            SaveMotionTrack();
             EnterState(GameState.Results);
         }
 
@@ -267,8 +304,35 @@ namespace AlienInvaders.Game
             _lastResult = Score.BuildResult(string.Empty, Waves.CurrentWave, DateTime.UtcNow);
             Debug.Log($"[Game] Match over: {_lastResult.Score} points, {_lastResult.SecondsSurvived:0} s, wave {_lastResult.WaveReached}");
             _results.Show(_lastResult, Records.Entries, -1);
-            _results.SetPlayAgainVisible(true);
+            if (Records.Qualifies(_lastResult))
+            {
+                // A place in the Top 10: ask for initials first; the record is saved when they are confirmed.
+                _results.BeginInitials(PlayerPrefs.GetString(LastInitialsKey, "AAA"));
+            }
+            else
+            {
+                _results.SetPlayAgainVisible(true);
+            }
             yield return _screenFade.FadeTo(0f, Balance.FadeFromBlackSeconds);
+        }
+
+        // Writes the motion recorded during the match to motion_yyyyMMdd_HHmmss.json next to the records.
+        private void SaveMotionTrack()
+        {
+            if (Recorder.Samples.Count == 0)
+            {
+                return;
+            }
+            string path = Path.Combine(Application.persistentDataPath, $"motion_{DateTime.Now:yyyyMMdd_HHmmss}.json");
+            try
+            {
+                Recorder.Save(path);
+                Debug.Log($"[Game] Motion track saved: {path} ({Recorder.Samples.Count} samples)");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Game] Could not save the motion track: {e.Message}");
+            }
         }
 
         private IEnumerator ArrivalRoutine()

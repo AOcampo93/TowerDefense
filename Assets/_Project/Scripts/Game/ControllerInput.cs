@@ -4,6 +4,15 @@ using UnityEngine.InputSystem;
 
 namespace AlienInvaders.Game
 {
+    /// <summary>The four flick directions of a thumbstick (menus such as the initials picker).</summary>
+    public enum StickDirection
+    {
+        Up,
+        Down,
+        Left,
+        Right
+    }
+
     /// <summary>
     /// Single place that reads the Quest controllers. Every script asks the same questions
     /// ("was the right trigger pressed?"), so if the Meta SDK input API changes only this file changes.
@@ -45,6 +54,42 @@ namespace AlienInvaders.Game
 #else
             return false;
 #endif
+        }
+
+        /// <summary>True only on the frame the right thumbstick is flicked in a direction. Arrow keys in the editor.</summary>
+        public static bool RightStickFlicked(StickDirection direction)
+        {
+            if (OVRInput.GetDown(StickButton(direction), OVRInput.Controller.RTouch))
+            {
+                return true;
+            }
+#if UNITY_EDITOR
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard == null)
+            {
+                return false;
+            }
+            switch (direction)
+            {
+                case StickDirection.Up: return keyboard.upArrowKey.wasPressedThisFrame;
+                case StickDirection.Down: return keyboard.downArrowKey.wasPressedThisFrame;
+                case StickDirection.Left: return keyboard.leftArrowKey.wasPressedThisFrame;
+                default: return keyboard.rightArrowKey.wasPressedThisFrame;
+            }
+#else
+            return false;
+#endif
+        }
+
+        private static OVRInput.Button StickButton(StickDirection direction)
+        {
+            switch (direction)
+            {
+                case StickDirection.Up: return OVRInput.Button.PrimaryThumbstickUp;
+                case StickDirection.Down: return OVRInput.Button.PrimaryThumbstickDown;
+                case StickDirection.Left: return OVRInput.Button.PrimaryThumbstickLeft;
+                default: return OVRInput.Button.PrimaryThumbstickRight;
+            }
         }
     }
 }

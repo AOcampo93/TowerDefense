@@ -14,12 +14,15 @@ namespace AlienInvaders.Views
         [SerializeField] private Color _normalColor = new Color(0.1f, 0.45f, 0.55f, 1f);
         [SerializeField] private Color _hoverColor = new Color(0.1f, 0.8f, 1f, 1f);
 
+        private int _enabledFrame;
+
         /// <summary>Raised when the player points at the button and pulls the trigger.</summary>
         public event Action OnPressed;
 
         private void OnEnable()
         {
             SetHovered(false);
+            _enabledFrame = Time.frameCount;
         }
 
         /// <summary>Highlights the button while the pointer is on it.</summary>
@@ -31,7 +34,11 @@ namespace AlienInvaders.Views
         /// <summary>Activates the button.</summary>
         public void Press()
         {
-            OnPressed?.Invoke();
+            // The trigger press that made the button appear (confirming initials) must not press it too.
+            if (Time.frameCount != _enabledFrame)
+            {
+                OnPressed?.Invoke();
+            }
         }
     }
 }
