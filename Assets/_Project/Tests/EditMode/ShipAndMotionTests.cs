@@ -65,6 +65,18 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void TargetPoint_IsAlwaysOnTheFacadeBelowThePlayer()
+        {
+            for (int seed = 0; seed < 200; seed++)
+            {
+                Vector3 target = NewFighter(seed).TargetPoint;
+                Assert.That(target.Y, Is.InRange(Balance.MinImpactHeight, Balance.MaxImpactHeight), $"seed {seed}");
+                Assert.LessOrEqual(Math.Abs(target.X), Balance.TowerHalfWidth + 0.001f);
+                Assert.LessOrEqual(Math.Abs(target.Z), Balance.TowerHalfWidth + 0.001f);
+            }
+        }
+
+        [Test]
         public void AzimuthConversions_AreConsistent()
         {
             Vector3 east = EnemyShip.FromAzimuth(90f, 10f, 0f);

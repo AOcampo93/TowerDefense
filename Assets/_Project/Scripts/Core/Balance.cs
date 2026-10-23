@@ -94,6 +94,13 @@ namespace AlienInvaders.Core
         /// </summary>
         public const float TowerHalfWidth = 0.6f;
 
+        /// <summary>
+        /// Height range (meters, relative to the player platform) where enemy shots hit the facade. Always below the
+        /// player's feet, so the impact is visible when looking down and never lands above the top of the tower.
+        /// </summary>
+        public const float MinImpactHeight = -20f;
+        public const float MaxImpactHeight = -1.5f;
+
         // ---------- Score ----------
         public const int PointsPerSecond = 10;
         public const int PointsPerKill = 5;

@@ -7687,6 +7687,7 @@ Transform:
   - {fileID: 2070411497}
   - {fileID: 1559194469}
   - {fileID: 803121571}
+  - {fileID: 1918742324}
   m_Father: {fileID: 1808595986}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1216163058
@@ -11979,6 +11980,8 @@ GameObject:
   - component: {fileID: 1908683093}
   - component: {fileID: 1908683092}
   - component: {fileID: 1908683091}
+  - component: {fileID: 1908683095}
+  - component: {fileID: 1908683094}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -12047,6 +12050,75 @@ MonoBehaviour:
   _worldVR: {fileID: 1213854240}
   _eyeCamera: {fileID: 2006356694}
   _vrBackground: {r: 0.32, g: 0.12, b: 0.06, a: 1}
+--- !u!114 &1908683094
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908683089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60bacbece0110451d9badebc5e0b0a00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Game.ShipSpawner
+  _game: {fileID: 1908683091}
+  _shipsRoot: {fileID: 803121571}
+  _fighterPrefab: {fileID: 1665761235359433715, guid: 54fd787bcc13f4e828436859f0b06091, type: 3}
+  _bomberPrefab: {fileID: 7475921335747704945, guid: 31a89c5e9dbb446c88318d3d2b601e1a, type: 3}
+  _explosions: {fileID: 1908683095}
+  _prewarmFighters: 24
+  _prewarmBombers: 8
+  _fighterExplosionSize: 6
+  _bomberExplosionSize: 9
+  _impactExplosionSize: 2
+  _debugSpawnKey: 1
+--- !u!114 &1908683095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908683089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2fb3a99f1b2948769af269c4f1d273a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.ExplosionPool
+  _prefab: {fileID: 4023871279788835527, guid: 36d04c7ca5bd4471fb0c4b2d4af9688d, type: 3}
+  _root: {fileID: 1918742324}
+  _prewarm: 16
+--- !u!1 &1918742323
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1918742324}
+  m_Layer: 0
+  m_Name: EffectsRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1918742324
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1918742323}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1213854241}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1965234851
 GameObject:
   m_ObjectHideFlags: 0

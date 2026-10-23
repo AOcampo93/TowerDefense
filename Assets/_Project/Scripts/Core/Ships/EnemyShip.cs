@@ -129,7 +129,8 @@ namespace AlienInvaders.Core.Ships
         }
 
         /// <summary>
-        /// Picks a random point in the flight zone and the facade point it will shoot at.
+        /// Picks a random point in the flight zone and the facade point it will shoot at. Ships aim a few meters
+        /// below their own height, but always somewhere on the facade under the player.
         /// </summary>
         protected void ChooseNewStation()
         {
@@ -139,7 +140,8 @@ namespace AlienInvaders.Core.Ships
 
             Station = FromAzimuth(azimuth, radius, height);
             TargetSide = TowerIntegrity.SideFromAzimuth(azimuth);
-            TargetPoint = FacadePoint(TargetSide, azimuth, height - 8f);
+            float impactHeight = Clamp(height - 8f, Balance.MinImpactHeight, Balance.MaxImpactHeight);
+            TargetPoint = FacadePoint(TargetSide, azimuth, impactHeight);
         }
 
         /// <summary>Converts compass azimuth + horizontal distance + height into a position.</summary>
