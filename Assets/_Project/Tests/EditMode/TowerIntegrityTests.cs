@@ -30,11 +30,11 @@ namespace AlienInvaders.Tests
             var fired = new List<int>();
             tower.OnThresholdReached += fired.Add;
 
-            tower.ReceiveDamage(TowerSide.North, 30f); // 70 % -> crosses 75
-            tower.ReceiveDamage(TowerSide.North, 1f);  // 69 % -> nothing new
-            tower.ReceiveDamage(TowerSide.South, 50f); // 19 % -> crosses 50 and 25
+            tower.ReceiveDamage(TowerSide.North, 35f); // 65 % -> crosses 66
+            tower.ReceiveDamage(TowerSide.North, 1f);  // 64 % -> nothing new
+            tower.ReceiveDamage(TowerSide.South, 64f); // 0 % -> crosses 33 and 0
 
-            CollectionAssert.AreEqual(new[] { 75, 50, 25 }, fired);
+            CollectionAssert.AreEqual(new[] { 66, 33, 0 }, fired);
         }
 
         [Test]
@@ -50,9 +50,9 @@ namespace AlienInvaders.Tests
         public void Tilt_PointsTowardsDamagedSide_AndIsCappedByStage()
         {
             var tower = new TowerIntegrity();
-            tower.ReceiveDamage(TowerSide.East, 20f); // 80 % integrity -> stage cap 5 degrees
+            tower.ReceiveDamage(TowerSide.East, 20f); // 80 % integrity -> stage cap 7 degrees
             Assert.Greater(tower.TargetTilt.X, 0f);
-            Assert.AreEqual(5f, tower.TargetTilt.Length(), 0.001f);
+            Assert.AreEqual(7f, tower.TargetTilt.Length(), 0.001f);
         }
 
         [Test]

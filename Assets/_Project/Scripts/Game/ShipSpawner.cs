@@ -11,8 +11,9 @@ namespace AlienInvaders.Game
 {
     /// <summary>
     /// Owns the ship pools and the list of ships in the air. It creates the core ship with the ShipFactory, gives it a
-    /// pooled GameObject and turns ship events into game consequences: a shot damages the tower, a destroyed ship
-    /// counts for the score. Other systems (portals, radar) only ask it to spawn ships or read ActiveShips.
+    /// pooled GameObject and turns ship events into game consequences: a shot damages the tower (and blows up its
+    /// facade), a destroyed ship counts for the score, a shot down at the city sets a roof on fire. Other systems
+    /// (portals, radar) only ask it to spawn ships or read ActiveShips.
     /// </summary>
     public class ShipSpawner : MonoBehaviour
     {
@@ -22,13 +23,17 @@ namespace AlienInvaders.Game
         [SerializeField] private ShipController _fighterPrefab;
         [SerializeField] private ShipController _bomberPrefab;
         [SerializeField] private ExplosionPool _explosions;
+        [SerializeField] private TowerDamageView _towerDamage;
+        [SerializeField] private CityFires _cityFires;
         [SerializeField] private int _prewarmFighters = 40;
         [SerializeField] private int _prewarmBombers = 16;
 
         [Header("Explosions (meters)")]
         [SerializeField] private float _fighterExplosionSize = 30f;
         [SerializeField] private float _bomberExplosionSize = 60f;
-        [SerializeField] private float _impactExplosionSize = 3f;
+        [Tooltip("Explosions on a ship's hull while the bolts of a burst land.")]
+        [SerializeField] private float _fighterHitSize = 7f;
+        [SerializeField] private float _bomberHitSize = 11f;
 
         [Header("Debug")]
         [Tooltip("Editor only: the F key spawns one Fighter during the fight.")]
@@ -87,8 +92,26 @@ namespace AlienInvaders.Game
         public void HandleShipFired(TowerSide side, float damage, Vector3 impact)
         {
             _game.Tower.ReceiveDamage(side, damage);
-            _explosions.Spawn(impact, _impactExplosionSize);
+            _towerDamage.Impact(impact);
             Debug.Log($"[Game] Tower hit on {side}: -{damage:0.#} -> {_game.Tower.Integrity:0.#} %");
+        }
+
+        /// <summary>A bolt hit a ship that survives: part of its hull blows up.</summary>
+        public void HandleShipHit(ShipType type, Vector3 point)
+        {
+            _explosions.Spawn(point, type == ShipType.Bomber ? _bomberHitSize : _fighterHitSize);
+        }
+
+        /// <summary>Picks a roof below a flying ship for it to fire at. False when there is no city under it.</summary>
+        public bool TryPickCityTarget(Vector3 shipPosition, out Vector3 target)
+        {
+            return _cityFires.TryPickTarget(shipPosition, out target);
+        }
+
+        /// <summary>A ship's shot reached the city: the roof blows up and starts burning.</summary>
+        public void HandleCityShot(Vector3 target)
+        {
+            _cityFires.Ignite(target);
         }
 
         /// <summary>The weapon destroyed a ship: score it, blow it up and return it to its pool.</summary>

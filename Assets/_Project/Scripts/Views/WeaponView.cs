@@ -5,8 +5,9 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// Greybox look and feel of the blaster. The gun appears when the elevator opens, every shot draws a short cyan
-    /// beam, the energy coils glow with the heat (cyan, then orange, then red) and blink while the weapon is locked.
+    /// Greybox look and feel of the blaster, a heavy gun almost half an arm long. The gun appears when the elevator
+    /// opens, every bolt of a burst draws a thick cyan beam with a white hot core, the energy coils glow with the heat
+    /// (cyan, then orange, then red) and blink while the weapon is locked.
     /// The heat is shown on the gun itself instead of a HUD, so the player never looks away from the ships.
     /// Haptics: a firm tick per shot, a full strength kick when the weapon overheats and then a pulse on every blink
     /// of the coils until the lock ends, so the hand knows the weapon is still locked without looking at it.
@@ -22,12 +23,15 @@ namespace AlienInvaders.Views
         [Tooltip("Coils that glow with the heat color.")]
         [SerializeField] private Renderer[] _heatCoils;
         [SerializeField] private LineRenderer _beam;
+        [Tooltip("White hot center of the beam, drawn over the colored glow.")]
+        [SerializeField] private LineRenderer _beamCore;
         [SerializeField] private GameObject _muzzleFlash;
 
         [Header("Feel")]
         [Tooltip("Seconds a beam stays visible; it thins out while it fades.")]
         [SerializeField] private float _beamSeconds = 0.08f;
         [SerializeField] private float _beamWidth = 0.035f;
+        [SerializeField] private float _beamCoreWidth = 0.012f;
         [Tooltip("Coil color from cold (left) to about to overheat (right). The yellow step avoids the grey-green " +
                  "that a straight blend from cyan to orange goes through.")]
         [SerializeField] private Gradient _heatColors = DefaultHeatColors();
@@ -98,10 +102,13 @@ namespace AlienInvaders.Views
             if (_beamTimer > 0f)
             {
                 _beamTimer -= Time.deltaTime;
-                _beam.widthMultiplier = _beamWidth * Mathf.Clamp01(_beamTimer / _beamSeconds);
+                float left = Mathf.Clamp01(_beamTimer / _beamSeconds);
+                _beam.widthMultiplier = _beamWidth * left;
+                _beamCore.widthMultiplier = _beamCoreWidth * left;
                 if (_beamTimer <= 0f)
                 {
                     _beam.enabled = false;
+                    _beamCore.enabled = false;
                     _muzzleFlash.SetActive(false);
                 }
             }
@@ -121,11 +128,15 @@ namespace AlienInvaders.Views
 
         private void HandleShot(Vector3 from, Vector3 to, bool hitTarget)
         {
-            // One beam is enough: at 8 shots per second a beam is gone long before the next shot.
+            // One beam is enough: at 10 bolts per second a beam is gone before the next bolt.
             _beam.SetPosition(0, from);
             _beam.SetPosition(1, to);
             _beam.widthMultiplier = _beamWidth;
             _beam.enabled = true;
+            _beamCore.SetPosition(0, from);
+            _beamCore.SetPosition(1, to);
+            _beamCore.widthMultiplier = _beamCoreWidth;
+            _beamCore.enabled = true;
             _muzzleFlash.SetActive(true);
             _beamTimer = _beamSeconds;
             _audio.PlayOneShot(_sounds.PlayerShot, _shotVolume);
@@ -210,6 +221,7 @@ namespace AlienInvaders.Views
         {
             _model.SetActive(visible);
             _beam.enabled = false;
+            _beamCore.enabled = false;
             _muzzleFlash.SetActive(false);
             _beamTimer = 0f;
         }

@@ -31,6 +31,20 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void Fighter_SurvivesOneBolt_AndFallsToABurst()
+        {
+            EnemyShip ship = NewFighter();
+            Assert.AreEqual(Balance.FighterHealth, ship.MaxHealth);
+            ship.Hit(Balance.ShotDamage);
+            Assert.IsTrue(ship.IsAlive);
+            for (int i = 1; i < Balance.FighterHealth; i++)
+            {
+                ship.Hit(Balance.ShotDamage);
+            }
+            Assert.IsFalse(ship.IsAlive);
+        }
+
+        [Test]
         public void Ship_ReachesStation_AndAims()
         {
             EnemyShip ship = NewFighter();
@@ -58,7 +72,7 @@ namespace AlienInvaders.Tests
             bool fired = false;
             ship.OnFire += (_, __, ___) => fired = true;
             RunUntilAiming(ship);
-            ship.Hit(1);
+            ship.Hit(Balance.FighterHealth);
             ship.Tick(10f);
             Assert.IsFalse(fired);
             Assert.IsFalse(ship.IsAlive);
@@ -114,10 +128,21 @@ namespace AlienInvaders.Tests
         {
             var tower = new TowerIntegrity();
             var model = new TowerMotionModel(tower);
-            tower.ReceiveDamage(TowerSide.West, 26f); // crosses 75 %
-            MotionSample s = model.Tick(Balance.DropDuration + 0.01f);
+            tower.ReceiveDamage(TowerSide.West, 35f); // crosses 66 %
+            MotionSample s = model.Tick(Balance.DropWarningSeconds + Balance.DropDuration + 0.01f);
             Assert.AreEqual(-Balance.DropDistances[0], s.Heave, 0.001f);
             Assert.Greater(s.Shake, 0f);
+        }
+
+        [Test]
+        public void ThresholdDrop_WaitsForTheWarning()
+        {
+            var tower = new TowerIntegrity();
+            var model = new TowerMotionModel(tower);
+            tower.ReceiveDamage(TowerSide.West, 35f); // crosses 66 %
+            MotionSample creaking = model.Tick(Balance.DropWarningSeconds * 0.5f);
+            Assert.AreEqual(0f, creaking.Heave, 0.001f);
+            Assert.Greater(creaking.Shake, 0f);
         }
 
         [Test]
@@ -125,11 +150,9 @@ namespace AlienInvaders.Tests
         {
             var tower = new TowerIntegrity();
             var model = new TowerMotionModel(tower);
-            tower.ReceiveDamage(TowerSide.West, 30f); // 70 %: first drop
-            model.Tick(Balance.DropDuration + 0.01f);
-            tower.ReceiveDamage(TowerSide.West, 50f); // 20 %: crosses 50 and 25 in one hit
-            MotionSample s = model.Tick(Balance.DropDuration + 0.01f);
-            float expected = -(Balance.DropDistances[0] + Balance.DropDistances[1] + Balance.DropDistances[2]);
+            tower.ReceiveDamage(TowerSide.West, 70f); // 30 %: crosses 66 and 33 in one hit
+            MotionSample s = model.Tick(Balance.DropWarningSeconds + Balance.DropDuration + 0.01f);
+            float expected = -(Balance.DropDistances[0] + Balance.DropDistances[1]);
             Assert.AreEqual(expected, s.Heave, 0.001f);
         }
 

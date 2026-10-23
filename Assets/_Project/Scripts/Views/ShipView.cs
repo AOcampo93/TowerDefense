@@ -5,9 +5,10 @@ namespace AlienInvaders.Views
     /// <summary>
     /// Greybox look of an enemy ship. The models have no rig, so the life comes from code: the body bobs and banks
     /// into its turns. While the ship aims, a thin red warning laser grows thicker until the shot (design pillar:
-    /// the player is always warned); the shot itself is a short, thick red beam. Sounds are 3D, so a ship charging
-    /// behind the player is heard behind them: a quiet engine loop while flying and a charging buzz whose pitch rises
-    /// until the shot.
+    /// the player is always warned); the shot itself is a short, thick red beam. A health bar floats over the ship,
+    /// always turned towards the player, and shrinks from green to red as the bolts land. Sounds are 3D, so a ship
+    /// charging behind the player is heard behind them: a quiet engine loop while flying and a charging buzz whose
+    /// pitch rises until the shot.
     /// </summary>
     public class ShipView : MonoBehaviour
     {
@@ -29,6 +30,18 @@ namespace AlienInvaders.Views
         [SerializeField] private float _fireWidth = 0.35f;
         [SerializeField] private float _fireSeconds = 0.2f;
 
+        [Header("Health bar")]
+        [Tooltip("Holder of the bar; it turns to face the top of the tower.")]
+        [SerializeField] private Transform _healthBar;
+        [Tooltip("Colored part of the bar; its pivot is the bar's center, so it is moved as it shrinks.")]
+        [SerializeField] private Transform _healthFill;
+        [SerializeField] private Renderer _healthFillRenderer;
+        [SerializeField] private Color _fullHealthColor = new Color(0.2f, 1f, 0.35f);
+        [SerializeField] private Color _halfHealthColor = new Color(1f, 0.85f, 0.1f);
+        [SerializeField] private Color _lowHealthColor = new Color(1f, 0.12f, 0.05f);
+        [Tooltip("Where the player's eyes are, in the space of the ships' parent (top of the tower).")]
+        [SerializeField] private Vector3 _viewer = new Vector3(0f, 1.6f, 0f);
+
         [Header("Sound")]
         [SerializeField] private GameSounds _sounds;
         [SerializeField] private AudioSource _engine;
@@ -37,7 +50,12 @@ namespace AlienInvaders.Views
         [SerializeField] private float _chargePitchStart = 0.8f;
         [SerializeField] private float _chargePitchEnd = 2.2f;
 
-        private Vector3 _target;
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+
+        private Vector3 _aimTarget;
+        private Vector3 _fireTarget;
+        private MaterialPropertyBlock _healthBlock;
+        private Vector3 _fillScale;
         private float _aimSeconds;
         private float _aimTimer;
         private float _fireTimer;
@@ -45,10 +63,17 @@ namespace AlienInvaders.Views
         private float _lastYaw;
         private float _bobOffset;
 
+        private void Awake()
+        {
+            _healthBlock = new MaterialPropertyBlock();
+            _fillScale = _healthFill.localScale;
+        }
+
         /// <summary>Resets the look when the ship leaves a portal (pooled ships are reused).</summary>
         public void Begin()
         {
             HideLasers();
+            ShowDamage(1f);
             _bank = 0f;
             _lastYaw = transform.eulerAngles.y;
             // So ships of the same wave do not bob (or hum) in sync.
@@ -67,10 +92,26 @@ namespace AlienInvaders.Views
             _voice.Stop();
         }
 
+        /// <summary>Shrinks the health bar to the share of health left (1 = intact) and colors it.</summary>
+        public void ShowDamage(float health)
+        {
+            health = Mathf.Clamp01(health);
+            Vector3 scale = _fillScale;
+            scale.x *= health;
+            _healthFill.localScale = scale;
+            // Keep the left end in place: the bar empties from the right.
+            _healthFill.localPosition = new Vector3(-_fillScale.x * (1f - health) * 0.5f, 0f, 0f);
+            Color color = health > 0.5f
+                ? Color.Lerp(_halfHealthColor, _fullHealthColor, (health - 0.5f) * 2f)
+                : Color.Lerp(_lowHealthColor, _halfHealthColor, health * 2f);
+            _healthBlock.SetColor(BaseColorId, color);
+            _healthFillRenderer.SetPropertyBlock(_healthBlock);
+        }
+
         /// <summary>Warning laser towards the impact point for the whole aim time.</summary>
         public void ShowAim(Vector3 target, float seconds)
         {
-            _target = target;
+            _aimTarget = target;
             _aimSeconds = Mathf.Max(0.01f, seconds);
             _aimTimer = _aimSeconds;
             _aimLaser.enabled = true;
@@ -80,10 +121,10 @@ namespace AlienInvaders.Views
             _voice.Play();
         }
 
-        /// <summary>The ship fires: the warning laser is replaced by a short heavy beam.</summary>
+        /// <summary>The ship fires (at the tower or down at the city): a short heavy beam.</summary>
         public void ShowFire(Vector3 target)
         {
-            _target = target;
+            _fireTarget = target;
             _aimLaser.enabled = false;
             _fireLaser.enabled = true;
             _fireTimer = _fireSeconds;
@@ -97,6 +138,9 @@ namespace AlienInvaders.Views
         {
             float dt = Time.deltaTime;
             AnimateBody(dt);
+            // The bar always faces the player on top of the tower, whatever way the ship flies.
+            Vector3 viewer = transform.parent.TransformPoint(_viewer);
+            _healthBar.rotation = Quaternion.LookRotation(_healthBar.position - viewer, Vector3.up);
 
             if (_aimLaser.enabled)
             {
@@ -104,14 +148,14 @@ namespace AlienInvaders.Views
                 float charge = 1f - Mathf.Clamp01(_aimTimer / _aimSeconds);
                 _aimLaser.widthMultiplier = Mathf.Lerp(_aimWidthStart, _aimWidthEnd, charge * charge);
                 _voice.pitch = Mathf.Lerp(_chargePitchStart, _chargePitchEnd, charge);
-                SetLaserPoints(_aimLaser);
+                SetLaserPoints(_aimLaser, _aimTarget);
             }
 
             if (_fireLaser.enabled)
             {
                 _fireTimer -= dt;
                 _fireLaser.widthMultiplier = _fireWidth * Mathf.Clamp01(_fireTimer / _fireSeconds);
-                SetLaserPoints(_fireLaser);
+                SetLaserPoints(_fireLaser, _fireTarget);
                 if (_fireTimer <= 0f)
                 {
                     _fireLaser.enabled = false;
@@ -133,10 +177,10 @@ namespace AlienInvaders.Views
             _model.localRotation = Quaternion.Euler(0f, 0f, _bank);
         }
 
-        private void SetLaserPoints(LineRenderer laser)
+        private void SetLaserPoints(LineRenderer laser, Vector3 target)
         {
             laser.SetPosition(0, _nose.position);
-            laser.SetPosition(1, _target);
+            laser.SetPosition(1, target);
         }
 
         private void HideLasers()

@@ -27,7 +27,7 @@ namespace AlienInvaders.Core
         /// <summary>Current tilt in degrees (X = towards East, Y = towards North), smoothed over time.</summary>
         public Vector2 CurrentTilt { get; private set; }
 
-        /// <summary>Raised once per threshold (75, 50, 25, 0) in descending order.</summary>
+        /// <summary>Raised once per threshold (66, 33, 0) in descending order.</summary>
         public event Action<int> OnThresholdReached;
 
         /// <summary>Raised after every hit with the side and the amount of damage.</summary>
@@ -81,17 +81,16 @@ namespace AlienInvaders.Core
         }
 
         /// <summary>
-        /// Maximum tilt allowed for the current damage stage: the more damaged the tower,
-        /// the more it is allowed to lean (5, 10, 15 and 20 degrees).
+        /// Maximum tilt allowed for the current damage stage: every floor that gives way lets the tower lean more
+        /// (7, 13 and 20 degrees).
         /// </summary>
         public float MaxTiltForStage
         {
             get
             {
                 float integrity = Integrity;
-                if (integrity > 75f) return 5f;
-                if (integrity > 50f) return 10f;
-                if (integrity > 25f) return 15f;
+                if (integrity > Balance.IntegrityThresholds[0]) return 7f;
+                if (integrity > Balance.IntegrityThresholds[1]) return 13f;
                 return 20f;
             }
         }

@@ -5,7 +5,7 @@ namespace AlienInvaders.Core.Ships
 {
     /// <summary>
     /// Slow, armored ship that flies straight to its station and fires a heavy shot.
-    /// It takes several hits, so the player must decide whether to focus it or the fighters.
+    /// It takes a long burst, so the player must decide whether to focus it or the fighters.
     /// </summary>
     public class Bomber : EnemyShip
     {
@@ -14,6 +14,7 @@ namespace AlienInvaders.Core.Ships
         {
             Type = ShipType.Bomber;
             Health = Balance.BomberHealth;
+            MaxHealth = Health;
             Speed = Balance.BomberSpeed * wave.SpeedMultiplier;
             DamageToTower = Balance.BomberDamage;
             AimTime = wave.AimTimeBomber;

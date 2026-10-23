@@ -43,8 +43,8 @@ namespace AlienInvaders.Views
 
         private void HandleThreshold(int threshold)
         {
-            // 75 % sounds at normal pitch; every later drop (and the collapse at 0 %) sounds deeper.
-            _rumble.pitch = Mathf.Lerp(0.7f, 1f, threshold / 75f);
+            // The first floor that gives way sounds at normal pitch; the next one (and the collapse at 0 %) deeper.
+            _rumble.pitch = Mathf.Lerp(0.7f, 1f, threshold / (float)Balance.IntegrityThresholds[0]);
             _rumble.PlayOneShot(_sounds.TowerRumble);
         }
 

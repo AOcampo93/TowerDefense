@@ -19,6 +19,7 @@ namespace AlienInvaders.Core.Ships
         {
             Type = ShipType.Fighter;
             Health = Balance.FighterHealth;
+            MaxHealth = Health;
             Speed = Balance.FighterSpeed * wave.SpeedMultiplier;
             DamageToTower = Balance.FighterDamage;
             AimTime = wave.AimTimeFighter;

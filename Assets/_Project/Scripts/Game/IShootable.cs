@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace AlienInvaders.Game
 {
     /// <summary>
@@ -6,7 +8,7 @@ namespace AlienInvaders.Game
     /// </summary>
     public interface IShootable
     {
-        /// <summary>Applies the damage of one shot.</summary>
-        void ReceiveHit(int damage);
+        /// <summary>Applies the damage of one shot that landed at a world position.</summary>
+        void ReceiveHit(int damage, Vector3 point);
     }
 }

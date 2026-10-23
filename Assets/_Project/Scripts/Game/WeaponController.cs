@@ -6,8 +6,8 @@ namespace AlienInvaders.Game
 {
     /// <summary>
     /// The player's blaster in the right hand. It reads the trigger and asks the core WeaponHeat whether a shot is
-    /// allowed (fire rate and overheating are rules, so they live in Core). Shots are instant beams (hitscan): a
-    /// thin sphere cast works as a slight aim assist. Every shot is reported to the ScoreSystem, so misses lower
+    /// allowed (fire rate and overheating are rules, so they live in Core); a held trigger fires a burst of bolts.
+    /// Bolts are instant beams (hitscan): a thin sphere cast works as a slight aim assist. Every shot is reported to the ScoreSystem, so misses lower
     /// the accuracy bonus.
     /// </summary>
     public class WeaponController : MonoBehaviour
@@ -67,7 +67,7 @@ namespace AlienInvaders.Game
             bool hitTarget = false;
             if (hitSomething && hit.collider.TryGetComponent(out IShootable target))
             {
-                target.ReceiveHit(Balance.ShotDamage);
+                target.ReceiveHit(Balance.ShotDamage, hit.point);
                 hitTarget = true;
             }
 

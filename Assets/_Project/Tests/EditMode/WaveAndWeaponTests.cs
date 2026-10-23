@@ -123,7 +123,7 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
-        public void HeldTrigger_OverheatsInAboutTwoSeconds()
+        public void HeldTrigger_OverheatsInAboutThreeSeconds()
         {
             // Same loop as the game: one Tick per headset frame (72 Hz), firing whenever the weapon allows it.
             var weapon = new WeaponHeat();
@@ -136,7 +136,7 @@ namespace AlienInvaders.Tests
                 elapsed += frame;
             }
             Assert.IsTrue(weapon.Overheated);
-            Assert.That(elapsed, Is.InRange(1.8f, 2.5f));
+            Assert.That(elapsed, Is.InRange(2.6f, 3.6f));
         }
 
         [Test]

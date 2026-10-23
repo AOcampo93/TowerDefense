@@ -20,6 +20,9 @@ namespace AlienInvaders.Core.Ships
 
         public ShipType Type { get; protected set; }
         public int Health { get; protected set; }
+
+        /// <summary>Health when the ship came out of the portal (for its health bar).</summary>
+        public int MaxHealth { get; protected set; }
         public float Speed { get; protected set; }
         public float DamageToTower { get; protected set; }
         public float AimTime { get; protected set; }

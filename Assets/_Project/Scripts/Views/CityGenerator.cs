@@ -144,6 +144,7 @@ namespace AlienInvaders.Views
         };
 
         private readonly List<Renderer> _beacons = new List<Renderer>();
+        private readonly List<Vector3> _roofs = new List<Vector3>();
         private readonly Avenue[] _avenues = new Avenue[2];
         private readonly District[] _districts = new District[4];
         // Streets that may cover one pixel of the street map: distance to their center line and half width.
@@ -152,6 +153,12 @@ namespace AlienInvaders.Views
         private int _streetCount;
         private System.Random _random;
         private float _beaconTimer;
+
+        /// <summary>Parent of the city (it leans and drops with the tower).</summary>
+        public Transform Root => _root;
+
+        /// <summary>Center of every regular roof, in the space of Root (the alien ships set them on fire).</summary>
+        public IReadOnlyList<Vector3> Roofs => _roofs;
 
         private void Awake()
         {
@@ -191,7 +198,7 @@ namespace AlienInvaders.Views
 
             var chunks = new Dictionary<Vector2Int, MeshBuffer>();
             var roofChunks = new Dictionary<Vector2Int, MeshBuffer>();
-            var roofs = new List<Vector3>();
+            _roofs.Clear();
             for (int i = 0; i < lots.Count; i++)
             {
                 Lot lot = lots[i];
@@ -205,7 +212,7 @@ namespace AlienInvaders.Views
                 float roofY = _groundTop + BuildingHeight(lot);
                 Color tint = Palette[_random.Next(Palette.Length)] * Lerp(0.9f, 1.05f, Next());
                 AddOrientedBox(Buffer(chunks, chunk), lot, _groundTop, roofY, tint);
-                roofs.Add(new Vector3(lot.Center.x, roofY, lot.Center.y));
+                _roofs.Add(new Vector3(lot.Center.x, roofY, lot.Center.y));
                 if (lot.Center.magnitude < _roofDetailRadius)
                 {
                     AddRoofDetails(Buffer(roofChunks, chunk), lot, roofY);
@@ -223,7 +230,7 @@ namespace AlienInvaders.Views
                     CreateMeshObject($"Rooftops_{pair.Key.x}_{pair.Key.y}", pair.Value, _roofDetailMaterial);
                 }
             }
-            PlaceSmoke(roofs);
+            PlaceSmoke(_roofs);
             PaintStreetMap();
         }
 

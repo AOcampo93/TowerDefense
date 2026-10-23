@@ -8,15 +8,23 @@ namespace AlienInvaders.Game
     /// <summary>
     /// Bridge between one core EnemyShip (the rules: life cycle, health, when to fire) and its GameObject. Every frame
     /// it advances the core ship and copies its position to the transform. Core events become visuals in the ShipView
-    /// and damage in the ShipSpawner. Ships are pooled, so Init and Despawn take the place of Awake and Destroy.
+    /// and damage in the ShipSpawner. While a ship flies between stations it also fires down at the city now and
+    /// then (only for show: it sets buildings on fire but does not hurt the tower), so the longer the ships live, the
+    /// more the city burns. Ships are pooled, so Init and Despawn take the place of Awake and Destroy.
     /// </summary>
     public class ShipController : MonoBehaviour, IShootable
     {
         [SerializeField] private ShipView _view;
         [Tooltip("Degrees per second the ship turns towards where it flies (or aims).")]
         [SerializeField] private float _turnSpeed = 240f;
+        [Tooltip("Seconds between the shots a flying ship fires down at the city (random in this range).")]
+        [SerializeField] private Vector2 _cityShotInterval = new Vector2(7f, 14f);
+        [Tooltip("Shortest time between two hit explosions on this ship (a burst lands ten bolts per second).")]
+        [SerializeField] private float _hitFlashInterval = 0.12f;
 
         private ShipSpawner _spawner;
+        private float _cityShotTimer;
+        private float _hitFlashTimer;
 
         /// <summary>The core ship shown by this GameObject (null while it waits in the pool).</summary>
         public EnemyShip Ship { get; private set; }
@@ -37,6 +45,8 @@ namespace AlienInvaders.Game
             transform.localPosition = ship.Position.ToUnity();
             Vector3 toStation = ship.Station.ToUnity() - transform.localPosition;
             transform.localRotation = toStation.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toStation) : Quaternion.identity;
+            _cityShotTimer = Random.Range(_cityShotInterval.x, _cityShotInterval.y);
+            _hitFlashTimer = 0f;
             _view.Begin();
         }
 
@@ -69,6 +79,8 @@ namespace AlienInvaders.Game
             }
             Vector3 current = Ship.Position.ToUnity();
             transform.localPosition = current;
+            _hitFlashTimer -= Time.deltaTime;
+            UpdateCityShots();
 
             // Nose first while flying; while aiming the nose points at the tower, so the warning laser comes out of it.
             Vector3 look = Ship.Phase == ShipPhase.Aiming ? Ship.TargetPoint.ToUnity() - current : current - previous;
@@ -79,10 +91,47 @@ namespace AlienInvaders.Game
             }
         }
 
-        /// <summary>Weapon hit: the core decides whether the ship survives.</summary>
-        public void ReceiveHit(int damage)
+        /// <summary>
+        /// Weapon hit: the core decides whether the ship survives. A ship that survives shows the damage: its health
+        /// bar shrinks and the hull blows up where the bolt landed.
+        /// </summary>
+        public void ReceiveHit(int damage, Vector3 point)
         {
-            Ship?.Hit(damage);
+            if (Ship == null)
+            {
+                return;
+            }
+            Ship.Hit(damage);
+            // A fatal hit sends the ship back to the pool right away (Ship becomes null).
+            if (Ship != null && Ship.IsAlive)
+            {
+                _view.ShowDamage((float)Ship.Health / Ship.MaxHealth);
+                if (_hitFlashTimer <= 0f)
+                {
+                    _hitFlashTimer = _hitFlashInterval;
+                    _spawner.HandleShipHit(Ship.Type, point);
+                }
+            }
+        }
+
+        // Between stations the ship fires down at a roof below it now and then.
+        private void UpdateCityShots()
+        {
+            if (Ship.Phase != ShipPhase.Approaching)
+            {
+                return;
+            }
+            _cityShotTimer -= Time.deltaTime;
+            if (_cityShotTimer > 0f)
+            {
+                return;
+            }
+            _cityShotTimer = Random.Range(_cityShotInterval.x, _cityShotInterval.y);
+            if (_spawner.TryPickCityTarget(transform.position, out Vector3 target))
+            {
+                _view.ShowFire(target);
+                _spawner.HandleCityShot(target);
+            }
         }
 
         private void HandleAimStarted(EnemyShip ship)
