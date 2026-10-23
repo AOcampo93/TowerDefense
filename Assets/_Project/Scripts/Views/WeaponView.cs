@@ -8,7 +8,8 @@ namespace AlienInvaders.Views
     /// Greybox look and feel of the blaster. The gun appears when the elevator opens, every shot draws a short cyan
     /// beam, the energy coils glow with the heat (cyan, then orange, then red) and blink while the weapon is locked.
     /// The heat is shown on the gun itself instead of a HUD, so the player never looks away from the ships.
-    /// Haptics: a soft tick per shot and a long buzz when the weapon overheats.
+    /// Haptics: a firm tick per shot, a full strength kick when the weapon overheats and then a pulse on every blink
+    /// of the coils until the lock ends, so the hand knows the weapon is still locked without looking at it.
     /// </summary>
     public class WeaponView : MonoBehaviour
     {
@@ -33,14 +34,19 @@ namespace AlienInvaders.Views
         [SerializeField] private float _lockBlinkRate = 5f;
 
         [Header("Haptics")]
-        [SerializeField] private float _shotPulseAmplitude = 0.3f;
-        [SerializeField] private float _shotPulseSeconds = 0.03f;
-        [SerializeField] private float _overheatPulseAmplitude = 0.9f;
+        [SerializeField] private float _shotPulseAmplitude = 0.7f;
+        [SerializeField] private float _shotPulseSeconds = 0.05f;
+        [Tooltip("Kick the moment the weapon overheats.")]
+        [SerializeField] private float _overheatPulseAmplitude = 1f;
         [SerializeField] private float _overheatPulseSeconds = 0.6f;
+        [Tooltip("Pulse on every blink of the coils after the kick, for the rest of the lock.")]
+        [SerializeField] private float _lockPulseAmplitude = 0.8f;
 
         private MaterialPropertyBlock _coilBlock;
         private Color _shownCoilColor;
         private float _beamTimer;
+        private float _overheatKickTimer;
+        private bool _wasBlinkOn;
 
         private void Awake()
         {
@@ -91,7 +97,10 @@ namespace AlienInvaders.Views
                 }
             }
 
-            SetCoilColor(HeatColor(_game.Weapon));
+            // The coils and the lock pulses share one blink, so the hand feels exactly what the eyes see.
+            bool blinkOn = _game.Weapon.Overheated && Mathf.Repeat(Time.time * _lockBlinkRate, 1f) < 0.5f;
+            UpdateLockHaptics(blinkOn);
+            SetCoilColor(HeatColor(_game.Weapon, blinkOn));
         }
 
         private void HandleStateChanged(GameState state)
@@ -109,19 +118,43 @@ namespace AlienInvaders.Views
             _beam.enabled = true;
             _muzzleFlash.SetActive(true);
             _beamTimer = _beamSeconds;
-            ControllerHaptics.PulseRight(_shotPulseAmplitude, _shotPulseSeconds);
+
+            // The shot that overheats the weapon already fired the overheat kick (OnOverheated comes first), and a
+            // new pulse replaces the one in progress, so the short shot tick would cut the kick short.
+            if (!_game.Weapon.Overheated)
+            {
+                ControllerHaptics.PulseRight(_shotPulseAmplitude, _shotPulseSeconds);
+            }
         }
 
         private void HandleOverheated()
         {
             ControllerHaptics.PulseRight(_overheatPulseAmplitude, _overheatPulseSeconds);
+            _overheatKickTimer = _overheatPulseSeconds;
         }
 
-        private Color HeatColor(WeaponHeat heat)
+        private void UpdateLockHaptics(bool blinkOn)
+        {
+            bool blinkStarted = blinkOn && !_wasBlinkOn;
+            _wasBlinkOn = blinkOn;
+
+            // The blink pulses wait until the kick is over, for the same reason as above.
+            if (_overheatKickTimer > 0f)
+            {
+                _overheatKickTimer -= Time.deltaTime;
+                return;
+            }
+
+            if (blinkStarted)
+            {
+                ControllerHaptics.PulseRight(_lockPulseAmplitude, 0.5f / _lockBlinkRate);
+            }
+        }
+
+        private Color HeatColor(WeaponHeat heat, bool blinkOn)
         {
             if (heat.Overheated)
             {
-                bool blinkOn = Mathf.Repeat(Time.time * _lockBlinkRate, 1f) < 0.5f;
                 return blinkOn ? _hotColor : _lockedOffColor;
             }
 

@@ -12110,10 +12110,11 @@ MonoBehaviour:
   _hotColor: {r: 1, g: 0.05, b: 0.03, a: 1}
   _lockedOffColor: {r: 0.15, g: 0.02, b: 0.02, a: 1}
   _lockBlinkRate: 5
-  _shotPulseAmplitude: 0.3
-  _shotPulseSeconds: 0.03
-  _overheatPulseAmplitude: 0.9
+  _shotPulseAmplitude: 0.7
+  _shotPulseSeconds: 0.05
+  _overheatPulseAmplitude: 1
   _overheatPulseSeconds: 0.6
+  _lockPulseAmplitude: 0.8
 --- !u!114 &1965234854
 MonoBehaviour:
   m_ObjectHideFlags: 0
