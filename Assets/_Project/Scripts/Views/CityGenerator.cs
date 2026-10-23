@@ -11,7 +11,9 @@ namespace AlienInvaders.Views
     /// irregular sizes split into lots of different widths. The streets are also painted into a map texture that the
     /// ground shader uses, so the asphalt and its orange street lights always match the buildings.
     /// Buildings come in three sizes: small ones everywhere, medium ones scattered, and a few tall ones. The player's
-    /// tower always stays the tallest by a wide margin (no other building comes within 100 m of its top).
+    /// tower always stays the tallest by a wide margin (no other building comes within 100 m of its top). Close to the
+    /// tower, where the player looks straight down, lots can get modeled buildings (optional prefabs) fitted to their
+    /// size instead of plain boxes.
     /// Banks of low mist (drawn by the city shaders) drift between the small buildings.
     /// Buildings are merged into a few big meshes so the headset draws the whole city in a few dozen calls.
     /// It lives on an object that is active from the start, so the city is built while the game loads and not in
@@ -81,6 +83,14 @@ namespace AlienInvaders.Views
         [SerializeField] private int _smokeColumns = 6;
         [SerializeField] private Vector2 _smokeDistance = new Vector2(120f, 450f);
 
+        [Header("Modeled buildings near the tower (optional)")]
+        [Tooltip("Building prefabs used for the lots close to the tower. Empty: every building is a plain box.")]
+        [SerializeField] private GameObject[] _detailedBuildings;
+        [Tooltip("Lots closer than this to the tower get a modeled building (meters).")]
+        [SerializeField] private float _detailedRadius = 120f;
+        [Tooltip("How much a model may be scaled to fit its lot.")]
+        [SerializeField] private Vector2 _detailedScale = new Vector2(0.8f, 1.3f);
+
         [Header("Mist between the buildings")]
         [Tooltip("Height of the mist over the street (meters), about as high as the small buildings.")]
         [SerializeField] private float _mistTop = 22f;
@@ -145,6 +155,10 @@ namespace AlienInvaders.Views
 
         private readonly List<Renderer> _beacons = new List<Renderer>();
         private readonly List<Vector3> _roofs = new List<Vector3>();
+        // The modeled buildings that are really there (store assets may be missing) and their size, measured once.
+        private readonly List<GameObject> _detailedPrefabs = new List<GameObject>();
+        private readonly List<Bounds> _detailedBounds = new List<Bounds>();
+        private Transform _detailedRoot;
         private readonly Avenue[] _avenues = new Avenue[2];
         private readonly District[] _districts = new District[4];
         // Streets that may cover one pixel of the street map: distance to their center line and half width.
@@ -199,12 +213,17 @@ namespace AlienInvaders.Views
             var chunks = new Dictionary<Vector2Int, MeshBuffer>();
             var roofChunks = new Dictionary<Vector2Int, MeshBuffer>();
             _roofs.Clear();
+            MeasureDetailedBuildings();
             for (int i = 0; i < lots.Count; i++)
             {
                 Lot lot = lots[i];
                 if (skyscrapers.Contains(i))
                 {
                     CreateSkyscraper(lot);
+                    continue;
+                }
+                if (lot.Center.magnitude < _detailedRadius && TryPlaceDetailedBuilding(lot))
+                {
                     continue;
                 }
 
@@ -231,7 +250,79 @@ namespace AlienInvaders.Views
                 }
             }
             PlaceSmoke(_roofs);
+            if (_detailedRoot != null)
+            {
+                // Hundreds of modeled pieces drawn in a few batches (they never move inside the city).
+                StaticBatchingUtility.Combine(_detailedRoot.gameObject);
+            }
             PaintStreetMap();
+        }
+
+        // ---------------------------------------------------------------- modeled buildings near the tower
+
+        // Size of each prefab, taken from a temporary copy (prefab assets have no world bounds in a build).
+        private void MeasureDetailedBuildings()
+        {
+            _detailedPrefabs.Clear();
+            _detailedBounds.Clear();
+            if (_detailedBuildings == null)
+            {
+                return;
+            }
+            foreach (GameObject prefab in _detailedBuildings)
+            {
+                if (prefab == null)
+                {
+                    continue;
+                }
+                GameObject probe = Instantiate(prefab, Vector3.zero, Quaternion.identity);
+                Renderer[] parts = probe.GetComponentsInChildren<Renderer>();
+                Bounds bounds = parts[0].bounds;
+                foreach (Renderer part in parts)
+                {
+                    bounds.Encapsulate(part.bounds);
+                }
+                _detailedPrefabs.Add(prefab);
+                _detailedBounds.Add(bounds);
+                DestroyImmediate(probe);
+            }
+        }
+
+        // Puts a random model that fits the lot (turned a quarter if that fits better), scaled to fill it.
+        private bool TryPlaceDetailedBuilding(Lot lot)
+        {
+            int start = _random.Next(Mathf.Max(1, _detailedBounds.Count));
+            for (int k = 0; k < _detailedBounds.Count; k++)
+            {
+                int index = (start + k) % _detailedBounds.Count;
+                Bounds bounds = _detailedBounds[index];
+                bool turned = Next() < 0.5f;
+                float sizeX = turned ? bounds.size.z : bounds.size.x;
+                float sizeZ = turned ? bounds.size.x : bounds.size.z;
+                float scale = Mathf.Min(_detailedScale.y, Mathf.Min(lot.Half.x * 2f / sizeX, lot.Half.y * 2f / sizeZ));
+                if (scale < _detailedScale.x || bounds.size.y * scale > MaxHeight)
+                {
+                    continue;
+                }
+                if (_detailedRoot == null)
+                {
+                    _detailedRoot = new GameObject("DetailedBuildings").transform;
+                    _detailedRoot.SetParent(_root, false);
+                }
+                // Facing either street of the lot.
+                float yaw = lot.Angle + (turned ? 90f : 0f) + (Next() < 0.5f ? 180f : 0f);
+                Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+                GameObject building = Instantiate(_detailedPrefabs[index], _detailedRoot);
+                building.transform.localRotation = turn;
+                building.transform.localScale = Vector3.one * scale;
+                // The model's center over the lot's center, its base on the street.
+                Vector3 offset = turn * new Vector3(bounds.center.x, 0f, bounds.center.z) * scale;
+                building.transform.localPosition =
+                    new Vector3(lot.Center.x, _groundTop - bounds.min.y * scale, lot.Center.y) - offset;
+                _roofs.Add(new Vector3(lot.Center.x, _groundTop + bounds.size.y * scale, lot.Center.y));
+                return true;
+            }
+            return false;
         }
 
         // ---------------------------------------------------------------- streets

@@ -8,6 +8,8 @@ Shader "AlienInvaders/PanoramaSky"
         _Exposure ("Exposure", Range(0.2, 2)) = 1
         _Tint ("Tint", Color) = (1, 1, 1, 1)
         _HazeHeight ("Haze Height (sine of the elevation)", Range(0.01, 0.5)) = 0.08
+        _HorizonOffset ("Horizon Offset (moves the picture up or down, share of its height)", Range(-0.25, 0.25)) = 0
+        _Rotation ("Turn (share of a full turn, to put the sun where the game needs it)", Range(0, 1)) = 0
     }
 
     SubShader
@@ -32,6 +34,8 @@ Shader "AlienInvaders/PanoramaSky"
                 half _Exposure;
                 half4 _Tint;
                 float _HazeHeight;
+                float _HorizonOffset;
+                float _Rotation;
             CBUFFER_END
 
             // Set every frame by SkyController (a global, so the material asset is never modified at runtime).
@@ -66,9 +70,11 @@ Shader "AlienInvaders/PanoramaSky"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float3 direction = normalize(input.direction);
 
-                // Compass angle from +Z towards +X and elevation, mapped onto the panorama (+Z is its center).
+                // Compass angle from +Z towards +X and elevation, mapped onto the panorama (+Z is its center). Painted
+                // panoramas do not always have their horizon in the middle, so the picture can be moved up or down.
                 float azimuth = atan2(direction.x, direction.z);
-                float2 uv = float2(azimuth / (2.0 * PI) + 0.5 + _AI_SkyRotation, asin(direction.y) / PI + 0.5);
+                float2 uv = float2(azimuth / (2.0 * PI) + 0.5 + _AI_SkyRotation, asin(direction.y) / PI + 0.5 + _HorizonOffset);
+                uv.x += _Rotation;
                 // Level 0 always: a mip jump at the seam of the panorama would draw a thin line.
                 half3 sky = SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_MainTex, uv, 0).rgb * _Tint.rgb * _Exposure;
 

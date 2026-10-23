@@ -15,7 +15,7 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 1
-  m_FogColor: {r: 0.45, g: 0.34, b: 0.5, a: 1}
+  m_FogColor: {r: 0.56, g: 0.44, b: 0.55, a: 1}
   m_FogMode: 1
   m_FogDensity: 0.01
   m_LinearFogStart: 100
@@ -264,7 +264,7 @@ MonoBehaviour:
   _bandDistance: {x: 700, y: 900}
   _bandBase: {x: -245, y: -220}
   _bandSize: {x: 200, y: 360}
-  _sunAzimuth: 117.4
+  _sunAzimuth: 14.4
   _litColor: {r: 1, g: 0.74, b: 0.78, a: 1}
   _shadeColor: {r: 0.72, g: 0.62, b: 0.92, a: 1}
 --- !u!23 &29759515
@@ -23649,7 +23649,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
-  m_Color: {r: 1, g: 0.55, b: 0.45, a: 1}
+  m_Color: {r: 1, g: 0.66, b: 0.52, a: 1}
   m_Intensity: 0.9
   m_Range: 10
   m_SpotAngle: 30
@@ -23712,7 +23712,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1654146280}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.065553255, y: 0.5179881, z: -0.039857015, w: -0.8519405}
+  m_LocalRotation: {x: -0.0043740654, y: 0.9915104, z: -0.034624305, w: -0.12525685}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -26442,6 +26442,23 @@ MonoBehaviour:
   _smokeColumnPrefab: {fileID: 3913345316030493093, guid: 8a2e9ec06557548e4a7065adfbfc5dac, type: 3}
   _smokeColumns: 6
   _smokeDistance: {x: 120, y: 450}
+  _detailedBuildings:
+  - {fileID: 324811942181563311, guid: e6ae288e3a6a38040b2c8a8fe4d2ae2a, type: 3}
+  - {fileID: 8705294298434840268, guid: b86cfed977933c94e94f4ce970ff5244, type: 3}
+  - {fileID: 2247958807524645399, guid: 0955decf9879b2046b931a9b28f5c7eb, type: 3}
+  - {fileID: 7266674646988856222, guid: cafc34fab0d0279468dffbbaf32021e8, type: 3}
+  - {fileID: 3681763274321052515, guid: a2e8de82bbc056f4580d7bd706146999, type: 3}
+  - {fileID: 6152634063523069137, guid: cd0047b40591b5a4e9288356ae4c69bb, type: 3}
+  - {fileID: 3425439472655247051, guid: bb13e7bc66638524186ba8a48a9d5fc9, type: 3}
+  - {fileID: 8016510881455384520, guid: 67e3c5763f74c9f4a8288fc51b26202c, type: 3}
+  - {fileID: 8450528579514699327, guid: 11b81dedc66b54b40aa0bbdf5ac44cf0, type: 3}
+  - {fileID: 8283252916008055293, guid: e14985f4b2e25c34d805d8f8239952de, type: 3}
+  - {fileID: 1248945202227350602, guid: 39e1b9a73cb9f9e4888cc389ee7416d9, type: 3}
+  - {fileID: 8122954225948675500, guid: 911257c6d28884e4e9c537085e348c5a, type: 3}
+  - {fileID: 9048947294383255777, guid: 30b58f51e86575345849be99a461fbb3, type: 3}
+  - {fileID: 4028572892913029417, guid: a0645afa74c6d1c44878fc78ae8211e7, type: 3}
+  _detailedRadius: 120
+  _detailedScale: {x: 0.8, y: 1.3}
   _mistTop: 22
   _mistStrength: 0.9
   _mistWind: 4
@@ -26464,8 +26481,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.SkyController
   _sun: {fileID: 1654146281}
-  _sunAzimuth: 117.4
-  _sunElevation: 8.8
+  _sunAzimuth: 14.4
+  _sunElevation: 4
   _degreesPerSecond: 0.05
 --- !u!114 &1908683102
 MonoBehaviour:

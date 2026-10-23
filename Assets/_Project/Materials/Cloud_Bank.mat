@@ -32,7 +32,7 @@ Material:
     - _Coverage: 0.6
     - _Repeats: 6
     - _Speed: 0
-    - _SunAzimuth: 117.4
+    - _SunAzimuth: 14.4
     m_Colors:
     - _BaseColor: {r: 0.32, g: 0.26, b: 0.48, a: 1}
     - _SunColor: {r: 1, g: 0.62, b: 0.5, a: 1}

@@ -12,6 +12,17 @@
 # Asset meta data should only be ignored when the corresponding asset is also ignored
 !/[Aa]ssets/**/*.meta
 
+# Unity Asset Store packages: their license does not allow publishing them, so they stay on the developer machine
+# (download them from the Asset Store to build the full game)
+/[Aa]ssets/Polyeler/
+/[Aa]ssets/Polyeler.meta
+/[Aa]ssets/HiRezSpaceshipsCreatorFree/
+/[Aa]ssets/HiRezSpaceshipsCreatorFree.meta
+/[Aa]ssets/skybox DEMO/
+/[Aa]ssets/skybox DEMO.meta
+/[Aa]ssets/LaFinca/
+/[Aa]ssets/LaFinca.meta
+
 # IDE / OS
 .vs/
 .idea/

@@ -44,9 +44,10 @@ Assets/_Project/Scenes/Main.unity the only scene (AR and VR live in the same sce
 How to run:
 
 1. Open the project with Unity 6000.3.27f1 and Android Build Support installed.
-2. Turn on developer mode on the Quest 3 and connect it to the computer with a USB cable.
-3. Go to File > Build Profiles > Android, choose the Quest 3 as Run Device and press Build And Run.
-4. To run the tests, open Window > General > Test Runner and run all EditMode tests.
+2. Add three free Unity Asset Store packages with Window > Package Manager > My Assets: Simple Building Pack (Polyeler), Hi Rez Spaceships Creator Free Sample (Ebal Studios) and skybox1 DEMO (mooham3d). Their license does not allow publishing them in this repository. Without them the game still runs, but the buildings near the tower are plain boxes and the ships and the sky have no art.
+3. Turn on developer mode on the Quest 3 and connect it to the computer with a USB cable.
+4. Go to File > Build Profiles > Android, choose the Quest 3 as Run Device and press Build And Run.
+5. To run the tests, open Window > General > Test Runner and run all EditMode tests.
 
 # Useful Websites
 
