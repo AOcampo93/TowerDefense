@@ -20,6 +20,7 @@ namespace AlienInvaders.Game
         [SerializeField] private GameObject _panel;
 
         private bool _waitingForTrigger;
+        private int _beginFrame;
 
         /// <summary>Raised after the player confirms the platform position with the trigger.</summary>
         public event Action OnCalibrated;
@@ -32,6 +33,8 @@ namespace AlienInvaders.Game
         {
             _panel.SetActive(true);
             _waitingForTrigger = true;
+            // The trigger press that started calibration (the "Play again" button) must not also calibrate.
+            _beginFrame = Time.frameCount;
         }
 
         /// <summary>Hides the instructions and stops listening to the trigger.</summary>
@@ -43,7 +46,7 @@ namespace AlienInvaders.Game
 
         private void Update()
         {
-            if (_waitingForTrigger && ControllerInput.RightTriggerDown())
+            if (_waitingForTrigger && Time.frameCount != _beginFrame && ControllerInput.RightTriggerDown())
             {
                 Calibrate();
             }

@@ -21,10 +21,13 @@ namespace AlienInvaders.Game
         [SerializeField] private ElevatorView _elevator;
         [SerializeField] private ShipSpawner _ships;
         [SerializeField] private PortalSpawner _portals;
+        [SerializeField] private ResultsView _results;
+        [SerializeField] private ScreenFader _screenFade;
         [Tooltip("Components that implement IMotionOutput (camera, haptics, future platform). Disabled ones are skipped.")]
         [SerializeField] private MonoBehaviour[] _motionOutputs;
 
         private float _motionTimer;
+        private MatchResult _lastResult;
 
         /// <summary>Current state of the session.</summary>
         public GameState State { get; private set; }
@@ -61,6 +64,8 @@ namespace AlienInvaders.Game
             // The wave rhythm drives the fight states: calm and portals = Respite, ships attacking = Defense.
             WaveCycle.OnAttackStarted += HandleAttackStarted;
             WaveCycle.OnWaveCleared += HandleWaveCleared;
+            // Structural thresholds drive the end of the match: 25 % = critical, 0 % = collapse and rescue.
+            Tower.OnThresholdReached += HandleThreshold;
 
             // Unity cannot show interface fields in the inspector, so outputs are plain components checked here.
             foreach (MonoBehaviour behaviour in _motionOutputs)
@@ -75,11 +80,13 @@ namespace AlienInvaders.Game
         private void OnEnable()
         {
             _calibration.OnCalibrated += HandleCalibrated;
+            _results.OnPlayAgain += HandlePlayAgain;
         }
 
         private void OnDisable()
         {
             _calibration.OnCalibrated -= HandleCalibrated;
+            _results.OnPlayAgain -= HandlePlayAgain;
         }
 
         private void Start()
@@ -104,6 +111,8 @@ namespace AlienInvaders.Game
             switch (next)
             {
                 case GameState.Calibration:
+                    _results.Hide();
+                    _screenFade.SetImmediate(0f);
                     _elevator.Hide();
                     _passthrough.SetImmediate(1f);
                     _calibration.Begin();
@@ -126,9 +135,15 @@ namespace AlienInvaders.Game
                     break;
 
                 case GameState.Critical:
+                    // Still playable: the views add the alarm, the blinking bar and the heartbeat haptics.
+                    break;
+
                 case GameState.Rescue:
+                    StartCoroutine(RescueRoutine());
+                    break;
+
                 case GameState.Results:
-                    // Not reachable yet: added together with waves, tower collapse and records.
+                    StartCoroutine(ResultsRoutine());
                     break;
             }
 
@@ -173,6 +188,30 @@ namespace AlienInvaders.Game
             }
         }
 
+        private void HandleThreshold(int threshold)
+        {
+            if (!InFight)
+            {
+                return;
+            }
+            if (threshold <= 0)
+            {
+                EnterState(GameState.Rescue);
+            }
+            else if (threshold <= Balance.CriticalIntegrity && State != GameState.Critical)
+            {
+                EnterState(GameState.Critical);
+            }
+        }
+
+        private void HandlePlayAgain()
+        {
+            if (State == GameState.Results)
+            {
+                EnterState(GameState.Calibration);
+            }
+        }
+
         /// <summary>Puts every system back to the start, so "Play again" begins a clean match.</summary>
         private void ResetMatch()
         {
@@ -202,6 +241,34 @@ namespace AlienInvaders.Game
             StartCoroutine(_passthrough.FadeTo(0f, Balance.PassthroughFadeSeconds));
             yield return _elevator.PlayAscent(Balance.AscentSeconds);
             EnterState(GameState.Arrival);
+        }
+
+        private IEnumerator RescueRoutine()
+        {
+            // No more ships come out. The emergency cabin slams shut first, so the world never vanishes in view.
+            _portals.StopAll();
+            Coroutine fall = StartCoroutine(_elevator.PlayRescue(Balance.RescueSeconds));
+            yield return new WaitForSeconds(_elevator.RescueCloseSeconds);
+
+            // Behind closed walls: remove the ships and level the world for the next match.
+            _ships.ClearAll();
+            Motion.ResetAll();
+            yield return fall;
+
+            // The fall ends in black; the real room is switched on behind it.
+            yield return _screenFade.FadeTo(1f, Balance.FadeToBlackSeconds);
+            _elevator.Hide();
+            _passthrough.SetImmediate(1f);
+            EnterState(GameState.Results);
+        }
+
+        private IEnumerator ResultsRoutine()
+        {
+            _lastResult = Score.BuildResult(string.Empty, Waves.CurrentWave, DateTime.UtcNow);
+            Debug.Log($"[Game] Match over: {_lastResult.Score} points, {_lastResult.SecondsSurvived:0} s, wave {_lastResult.WaveReached}");
+            _results.Show(_lastResult, Records.Entries, -1);
+            _results.SetPlayAgainVisible(true);
+            yield return _screenFade.FadeTo(0f, Balance.FadeFromBlackSeconds);
         }
 
         private IEnumerator ArrivalRoutine()

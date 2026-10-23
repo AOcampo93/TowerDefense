@@ -62,6 +62,11 @@ namespace AlienInvaders.Game
 
             Vector3 previous = transform.localPosition;
             Ship.Tick(Time.deltaTime);
+            if (Ship == null)
+            {
+                // Safety: the ship can be sent back to the pool by its own events (for example the shot that ends the match).
+                return;
+            }
             Vector3 current = Ship.Position.ToUnity();
             transform.localPosition = current;
 

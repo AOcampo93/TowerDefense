@@ -83,6 +83,9 @@ namespace AlienInvaders.Views
             _roofScale = _roof.localScale;
         }
 
+        /// <summary>Seconds the emergency cabin needs to close around the player at the start of the rescue.</summary>
+        public float RescueCloseSeconds => _rescueCloseSeconds;
+
         /// <summary>Removes the cabin at once (AR calibration, or any state without an elevator).</summary>
         public void Hide()
         {
