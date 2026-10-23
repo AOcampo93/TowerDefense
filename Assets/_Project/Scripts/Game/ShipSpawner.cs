@@ -45,6 +45,9 @@ namespace AlienInvaders.Game
         /// <summary>Number of ships currently flying.</summary>
         public int AliveCount => _active.Count;
 
+        /// <summary>True when the F key may spawn test ships (only read in the editor).</summary>
+        public bool DebugSpawnKey => _debugSpawnKey;
+
         private void Awake()
         {
             _fighters = new ObjectPool<ShipController>(_fighterPrefab, _shipsRoot, _prewarmFighters);
@@ -55,7 +58,7 @@ namespace AlienInvaders.Game
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (_debugSpawnKey && keyboard != null && keyboard.fKey.wasPressedThisFrame)
+            if (DebugSpawnKey && keyboard != null && keyboard.fKey.wasPressedThisFrame)
             {
                 SpawnDebugFighter();
             }
