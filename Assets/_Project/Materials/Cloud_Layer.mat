@@ -35,8 +35,9 @@ Material:
     - _Scale: 600
     - _Softness: 0.12
     m_Colors:
-    - _Color: {r: 1, g: 0.74, b: 0.84, a: 1}
-    - _ShadowColor: {r: 0.28, g: 0.22, b: 0.45, a: 1}
+    - _Color: {r: 1, g: 0.74, b: 0.8, a: 1}
+    - _FadeDistance: {r: 450, g: 700, b: 0, a: 0}
+    - _ShadowColor: {r: 0.48, g: 0.28, b: 0.52, a: 1}
     - _Wind: {r: 3, g: 0, b: 1.5, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
