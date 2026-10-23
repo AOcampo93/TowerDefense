@@ -19,9 +19,16 @@ namespace AlienInvaders.Game
         [SerializeField] private PlatformCalibration _calibration;
         [SerializeField] private PassthroughFader _passthrough;
         [SerializeField] private ElevatorView _elevator;
+        [Tooltip("Components that implement IMotionOutput (camera, haptics, future platform). Disabled ones are skipped.")]
+        [SerializeField] private MonoBehaviour[] _motionOutputs;
+
+        private float _motionTimer;
 
         /// <summary>Current state of the session.</summary>
         public GameState State { get; private set; }
+
+        /// <summary>True in the states where ships attack and the player fights back.</summary>
+        public bool InFight => State == GameState.Defense || State == GameState.Respite || State == GameState.Critical;
 
         /// <summary>Raised after every state change so views can show or hide themselves.</summary>
         public event Action<GameState> OnStateChanged;
@@ -48,6 +55,15 @@ namespace AlienInvaders.Game
             Records = new HighScoreTable(
                 Path.Combine(Application.persistentDataPath, "records.json"), new JsonUtilityRecordSerializer());
             Records.Load();
+
+            // Unity cannot show interface fields in the inspector, so outputs are plain components checked here.
+            foreach (MonoBehaviour behaviour in _motionOutputs)
+            {
+                if (behaviour is IMotionOutput output && behaviour.enabled)
+                {
+                    Motion.Register(output);
+                }
+            }
         }
 
         private void OnEnable()
@@ -110,6 +126,25 @@ namespace AlienInvaders.Game
             }
 
             OnStateChanged?.Invoke(next);
+        }
+
+        private void Update()
+        {
+            if (!InFight)
+            {
+                return;
+            }
+
+            // The motion model runs every frame (smooth tilt and drops); outputs get a sample 20 times per second,
+            // the rate a physical platform and the recording use.
+            MotionSample sample = TowerMotion.Tick(Time.deltaTime);
+            _motionTimer += Time.deltaTime;
+            float interval = 1f / Balance.MotionSamplesPerSecond;
+            if (_motionTimer >= interval)
+            {
+                _motionTimer %= interval;
+                Motion.Publish(sample);
+            }
         }
 
         private void HandleCalibrated()

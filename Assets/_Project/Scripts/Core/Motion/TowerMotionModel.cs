@@ -20,6 +20,7 @@ namespace AlienInvaders.Core.Motion
 
         // Drop animation state.
         private float _heave;
+        private float _heaveTarget;
         private float _dropFrom;
         private float _dropTo;
         private float _dropElapsed = float.MaxValue;
@@ -76,8 +77,10 @@ namespace AlienInvaders.Core.Motion
                 return;
             }
 
+            // Drops add up from the last target, so one heavy hit that crosses two thresholds drops both distances.
+            _heaveTarget -= Balance.DropDistances[index];
             _dropFrom = _heave;
-            _dropTo = _heave - Balance.DropDistances[index];
+            _dropTo = _heaveTarget;
             _dropElapsed = 0f;
             _impactShake = DropShake;
         }
@@ -88,6 +91,7 @@ namespace AlienInvaders.Core.Motion
             _time = 0f;
             _impactShake = 0f;
             _heave = 0f;
+            _heaveTarget = 0f;
             _dropElapsed = float.MaxValue;
         }
     }

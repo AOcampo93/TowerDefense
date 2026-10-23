@@ -20,6 +20,12 @@ namespace AlienInvaders.Game
             Pulse(UnityEngine.InputSystem.CommonUsages.RightHand, amplitude, seconds);
         }
 
+        /// <summary>Buzz on the left controller only (the free hand, so it never interrupts the weapon's vibration).</summary>
+        public static void PulseLeft(float amplitude, float seconds)
+        {
+            Pulse(UnityEngine.InputSystem.CommonUsages.LeftHand, amplitude, seconds);
+        }
+
         /// <summary>Buzz on the right controller only (the hand holding the weapon).</summary>
         public static void PulseRight(float amplitude, float seconds)
         {

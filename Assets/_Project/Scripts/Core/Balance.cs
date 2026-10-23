@@ -27,6 +27,9 @@ namespace AlienInvaders.Core
         /// <summary>Integrity at or below which the game enters the Critical state.</summary>
         public const float CriticalIntegrity = 25f;
 
+        /// <summary>Motion samples sent to the outputs per second (camera, haptics, recorder, future platform).</summary>
+        public const float MotionSamplesPerSecond = 20f;
+
         // ---------- Elevator and AR / VR transition ----------
         /// <summary>
         /// Seconds the elevator takes to build itself around the player (floor, walls, roof) before the real

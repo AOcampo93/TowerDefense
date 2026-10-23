@@ -121,6 +121,19 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void HitCrossingTwoThresholds_DropsBothDistances()
+        {
+            var tower = new TowerIntegrity();
+            var model = new TowerMotionModel(tower);
+            tower.ReceiveDamage(TowerSide.West, 30f); // 70 %: first drop
+            model.Tick(Balance.DropDuration + 0.01f);
+            tower.ReceiveDamage(TowerSide.West, 50f); // 20 %: crosses 50 and 25 in one hit
+            MotionSample s = model.Tick(Balance.DropDuration + 0.01f);
+            float expected = -(Balance.DropDistances[0] + Balance.DropDistances[1] + Balance.DropDistances[2]);
+            Assert.AreEqual(expected, s.Heave, 0.001f);
+        }
+
+        [Test]
         public void Recorder_WritesInvariantJson()
         {
             var recorder = new MotionRecorder();
