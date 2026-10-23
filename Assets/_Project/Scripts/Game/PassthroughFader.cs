@@ -17,7 +17,7 @@ namespace AlienInvaders.Game
         [SerializeField] private OVRPassthroughLayer _passthrough;
         [SerializeField] private GameObject _worldVR;
         [SerializeField] private Camera _eyeCamera;
-        [Tooltip("Sky behind the virtual world until the sunset skybox arrives with the final art.")]
+        [Tooltip("Sky color behind the virtual world when the scene has no skybox material.")]
         [SerializeField] private Color _vrBackground = new Color(0.32f, 0.12f, 0.06f, 1f);
 
         /// <summary>True while the virtual world is shown (passthrough below half opacity).</summary>
@@ -65,6 +65,9 @@ namespace AlienInvaders.Game
             IsVR = vr;
             _worldVR.SetActive(vr);
             // Passthrough only shows where the eye buffer is transparent, so AR needs a fully clear background.
+            // In VR the sunset skybox fills the background (or a flat color if there is none).
+            bool sky = vr && RenderSettings.skybox != null;
+            _eyeCamera.clearFlags = sky ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
             _eyeCamera.backgroundColor = vr ? _vrBackground : Color.clear;
             OnModeChanged?.Invoke(vr);
         }

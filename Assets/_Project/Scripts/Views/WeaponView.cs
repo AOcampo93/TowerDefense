@@ -25,9 +25,12 @@ namespace AlienInvaders.Views
         [SerializeField] private GameObject _muzzleFlash;
 
         [Header("Feel")]
-        [SerializeField] private float _beamSeconds = 0.05f;
-        [SerializeField] private Color _coldColor = new Color(0f, 0.85f, 1f);
-        [SerializeField] private Color _warmColor = new Color(1f, 0.5f, 0.05f);
+        [Tooltip("Seconds a beam stays visible; it thins out while it fades.")]
+        [SerializeField] private float _beamSeconds = 0.08f;
+        [SerializeField] private float _beamWidth = 0.035f;
+        [Tooltip("Coil color from cold (left) to about to overheat (right). The yellow step avoids the grey-green " +
+                 "that a straight blend from cyan to orange goes through.")]
+        [SerializeField] private Gradient _heatColors = DefaultHeatColors();
         [SerializeField] private Color _hotColor = new Color(1f, 0.05f, 0.03f);
         [SerializeField] private Color _lockedOffColor = new Color(0.15f, 0.02f, 0.02f);
         [Tooltip("Blinks per second of the coils while the weapon is locked.")]
@@ -94,6 +97,7 @@ namespace AlienInvaders.Views
             if (_beamTimer > 0f)
             {
                 _beamTimer -= Time.deltaTime;
+                _beam.widthMultiplier = _beamWidth * Mathf.Clamp01(_beamTimer / _beamSeconds);
                 if (_beamTimer <= 0f)
                 {
                     _beam.enabled = false;
@@ -119,6 +123,7 @@ namespace AlienInvaders.Views
             // One beam is enough: at 8 shots per second a beam is gone long before the next shot.
             _beam.SetPosition(0, from);
             _beam.SetPosition(1, to);
+            _beam.widthMultiplier = _beamWidth;
             _beam.enabled = true;
             _muzzleFlash.SetActive(true);
             _beamTimer = _beamSeconds;
@@ -164,10 +169,24 @@ namespace AlienInvaders.Views
                 return blinkOn ? _hotColor : _lockedOffColor;
             }
 
-            // Cold to warm in the first half of the heat bar, warm to hot in the second half.
-            return heat.Heat < 0.5f
-                ? Color.Lerp(_coldColor, _warmColor, heat.Heat / 0.5f)
-                : Color.Lerp(_warmColor, _hotColor, (heat.Heat - 0.5f) / 0.5f);
+            return _heatColors.Evaluate(heat.Heat);
+        }
+
+        // Cyan when cold, then white, yellow, orange and red as the weapon heats up.
+        private static Gradient DefaultHeatColors()
+        {
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(new Color(0f, 0.85f, 1f), 0f),
+                    new GradientColorKey(new Color(0.85f, 0.95f, 1f), 0.3f),
+                    new GradientColorKey(new Color(1f, 0.9f, 0.2f), 0.55f),
+                    new GradientColorKey(new Color(1f, 0.5f, 0.05f), 0.8f),
+                    new GradientColorKey(new Color(1f, 0.05f, 0.03f), 1f)
+                },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
+            return gradient;
         }
 
         private void SetCoilColor(Color color)
