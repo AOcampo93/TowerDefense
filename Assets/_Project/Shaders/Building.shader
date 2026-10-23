@@ -1,6 +1,8 @@
 // Building that reads as a building: concrete walls and gravel roofs (textures sized in meters), lit by the sun,
-// with a grid of windows (a few lit, a few on fire and flickering). The windows are computed from the object's own space in meters, so boxes of any
-// size get the right number of floors and the pattern stays glued to the walls while the city leans.
+// with a grid of windows (a few lit, a few on fire and glowing softly) and some neon signs. The windows are computed
+// from the object's own space in meters, so boxes of any size get the right number of floors and the pattern stays
+// glued to the walls while the city leans. When a window gets smaller than a few pixels the grid melts into its
+// average color, so the far city does not shimmer on the headset. Low mist fills the streets between the buildings.
 Shader "AlienInvaders/Building"
 {
     Properties
@@ -43,6 +45,7 @@ Shader "AlienInvaders/Building"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "CityMist.hlsl"
 
             TEXTURE2D(_WallTex);
             SAMPLER(sampler_WallTex);
@@ -87,6 +90,7 @@ Shader "AlienInvaders/Building"
                 float3 scale : TEXCOORD3;
                 half fogFactor : TEXCOORD4;
                 float distance : TEXCOORD5;
+                float3 cityPosition : TEXCOORD6;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -107,7 +111,9 @@ Shader "AlienInvaders/Building"
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.fogFactor = ComputeFogFactor(output.positionCS.z);
-                output.distance = distance(TransformObjectToWorld(input.positionOS.xyz), GetCameraPositionWS());
+                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.distance = distance(positionWS, GetCameraPositionWS());
+                output.cityPosition = CityPosition(positionWS);
                 return output;
             }
 
@@ -126,6 +132,14 @@ Shader "AlienInvaders/Building"
                 Light sun = GetMainLight();
                 half3 lighting = SampleSH(normalWS) + sun.color * saturate(dot(normalWS, sun.direction));
 
+                // Window grid of the wall: horizontal coordinate along the wall, vertical from the base (floors).
+                // Worked out before any branch, because screen derivatives need every pixel of the quad.
+                float3 along = normalize(cross(float3(0.0, 1.0, 0.0), input.normalOS + float3(0.0, 0.0, 0.0001)));
+                float2 grid = float2(dot(input.positionMeters, along), input.positionMeters.y) / _CellSize.xy;
+                float2 cellPixels = 1.0 / max(fwidth(grid), 0.0001);
+                // 0 when a window cell is under 3 pixels on screen, 1 from 8 pixels up.
+                half detail = saturate((min(cellPixels.x, cellPixels.y) - 3.0) / 5.0);
+
                 half3 color;
                 if (abs(input.normalOS.y) > 0.5)
                 {
@@ -134,21 +148,18 @@ Shader "AlienInvaders/Building"
                 }
                 else
                 {
-                    // Horizontal coordinate along this wall, vertical coordinate from the base: floors and columns.
-                    float3 along = normalize(cross(float3(0.0, 1.0, 0.0), input.normalOS));
-                    float2 grid = float2(dot(input.positionMeters, along), input.positionMeters.y) / _CellSize.xy;
                     float2 cell = floor(grid);
                     float2 inCell = abs(frac(grid) - 0.5);
                     bool window = inCell.x < _WindowFill.x * 0.5 && inCell.y < _WindowFill.y * 0.5;
-
                     half3 wall = SAMPLE_TEXTURE2D(_WallTex, sampler_WallTex, float2(grid.x * _CellSize.x, input.positionMeters.y) / _WallTile).rgb;
                     color = _BaseColor.rgb * input.tint * wall * lighting;
-                    // Far away the window grid would shimmer on the headset: blend it into its average color.
+                    // Small on screen or far away, the window grid becomes its average color.
                     half area = _WindowFill.x * _WindowFill.y;
                     half3 windowAverage = _WindowColor.rgb * lighting * (1.0 - _LitChance - _FireChance)
                                         + _LitColor.rgb * _LitChance * 0.8 + _FireColor.rgb * _FireChance;
                     half3 farColor = lerp(color, windowAverage, area);
                     float fade = saturate((input.distance - _DetailFade.x) / max(1.0, _DetailFade.y - _DetailFade.x));
+                    fade = max(fade, 1.0 - detail);
                     if (window)
                     {
                         // The box size makes every building's pattern different without per-object data.
@@ -156,7 +167,8 @@ Shader "AlienInvaders/Building"
                         color = _WindowColor.rgb * lighting;
                         if (random > 1.0 - _FireChance)
                         {
-                            half flicker = 0.65 + 0.35 * sin(_Time.y * (9.0 + random * 7.0) + random * 40.0);
+                            // Fire glows and breathes slowly instead of blinking.
+                            half flicker = 0.85 + 0.15 * sin(_Time.y * (1.5 + random * 2.0) + random * 40.0);
                             color = _FireColor.rgb * flicker * 1.6;
                         }
                         else if (random < _LitChance)
@@ -165,18 +177,19 @@ Shader "AlienInvaders/Building"
                         }
                     }
                     color = lerp(color, farColor, fade);
-
                     // Neon signs: short glowing bands across some facades, four windows wide, near a floor's top.
+                    // The band is thin, so it only shows while it is at least a couple of pixels tall.
                     float2 signCell = float2(floor(grid.x / 4.0), cell.y);
                     float signRandom = Hash(float3(signCell, 7.0 + dot(input.normalOS, float3(1.0, 2.0, 3.0))) + input.scale);
                     float inFloor = frac(grid.y);
                     if (signRandom < _NeonChance && inFloor > 0.84 && inFloor < 0.96)
                     {
                         half3 neon = signRandom < _NeonChance * 0.33 ? _NeonA.rgb : (signRandom < _NeonChance * 0.66 ? _NeonB.rgb : _NeonC.rgb);
-                        color = neon * 1.4;
+                        half neonDetail = saturate((cellPixels.y * 0.12 - 1.0) / 2.0);
+                        color = lerp(color, neon * 1.4, neonDetail);
                     }
                 }
-
+                color = ApplyCityMist(color, input.cityPosition);
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);
             }

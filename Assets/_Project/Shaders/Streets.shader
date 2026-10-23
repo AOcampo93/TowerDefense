@@ -1,7 +1,8 @@
 // Ground of the city seen from far above. Inside the city the streets come from the street map painted by
 // CityGenerator (red = asphalt, green = the glow of the street lights), so they match the buildings, diagonal
 // avenues included; beyond the map a plain grid takes over, deep in the haze. Blocks get their own shade and dots of
-// lit windows. Everything is in the ground's own meters, so it stays glued to the ground while the city leans.
+// lit windows (melted into their average glow when they get too small to draw cleanly). Low mist covers the streets
+// in patches. Everything is in the ground's own meters, so it stays glued to the ground while the city leans.
 Shader "AlienInvaders/Streets"
 {
     Properties
@@ -34,6 +35,7 @@ Shader "AlienInvaders/Streets"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "CityMist.hlsl"
 
             // Set by CityGenerator once the streets are laid out.
             TEXTURE2D(_AI_CityMap);
@@ -65,6 +67,7 @@ Shader "AlienInvaders/Streets"
                 float2 groundMeters : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 half fogFactor : TEXCOORD2;
+                float3 cityPosition : TEXCOORD3;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -79,6 +82,7 @@ Shader "AlienInvaders/Streets"
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.fogFactor = ComputeFogFactor(output.positionCS.z);
+                output.cityPosition = CityPosition(TransformObjectToWorld(input.positionOS.xyz));
                 return output;
             }
 
@@ -124,15 +128,16 @@ Shader "AlienInvaders/Streets"
                 half3 color = lerp(_BlockColor.rgb * lerp(0.7, 1.15, Hash(patch)), _StreetColor.rgb, asphalt);
                 // Sodium street lights along the curbs, and their orange wash over the asphalt.
                 half3 glow = _LampColor.rgb * _LampGlow * (0.08 * asphalt + lampLine);
+                // Seen from far away, the lit windows of a block are dots of warm light. Dots smaller than a few pixels
+                // would sparkle on the headset, so they melt into their average glow.
+                float2 dotGrid = input.groundMeters / 4.0;
+                half dotDetail = saturate((1.0 / max(max(fwidth(dotGrid.x), fwidth(dotGrid.y)), 0.0001) - 4.0) / 4.0);
                 if (asphalt < 0.1)
                 {
-                    // Seen from far away, the lit windows of a block are dots of warm light.
-                    float2 dotCell = floor(input.groundMeters / 4.0);
-                    float2 inDot = frac(input.groundMeters / 4.0);
-                    if (Hash(dotCell + 3.7) < _DotChance && all(abs(inDot - 0.5) < 0.22))
-                    {
-                        glow = _DotColor.rgb * 0.9;
-                    }
+                    float2 inDot = frac(dotGrid);
+                    half dotOn = Hash(floor(dotGrid) + 3.7) < _DotChance && all(abs(inDot - 0.5) < 0.22) ? 1.0 : 0.0;
+                    half dot = lerp(_DotChance * 0.19, dotOn, dotDetail);
+                    glow = lerp(glow, _DotColor.rgb * 0.9, dot);
                 }
                 // Dashed lane marks, only on the plain grid beyond the map (the map has its own street layout).
                 float2 dashes = frac(input.groundMeters / 6.0);
@@ -143,7 +148,10 @@ Shader "AlienInvaders/Streets"
                     color = _LineColor.rgb;
                 }
 
-                color = MixFog(color * lighting + glow, input.fogFactor);
+                // The street lights still glow through the mist, only softer.
+                half mist = CityMist(input.cityPosition);
+                color = lerp(color * lighting, _AI_MistColor.rgb, mist) + glow * (1.0 - 0.6 * mist);
+                color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);
             }
             ENDHLSL

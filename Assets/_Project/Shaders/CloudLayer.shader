@@ -14,6 +14,7 @@ Shader "AlienInvaders/CloudLayer"
         _Softness ("Edge Softness", Range(0.01, 0.5)) = 0.18
         _Opacity ("Opacity", Range(0, 1)) = 0.85
         _ClearRadius ("Clear Radius Around The Tower (meters)", Float) = 60
+        _FadeDistance ("Fades Out Between (meters from the tower)", Vector) = (450, 700, 0, 0)
     }
 
     SubShader
@@ -48,6 +49,7 @@ Shader "AlienInvaders/CloudLayer"
                 half _Softness;
                 half _Opacity;
                 float _ClearRadius;
+                float4 _FadeDistance;
             CBUFFER_END
 
             struct Attributes
@@ -88,6 +90,8 @@ Shader "AlienInvaders/CloudLayer"
                 half cloud = smoothstep(1.0 - _Coverage, 1.0 - _Coverage + _Softness, density);
                 // A clearing around the tower keeps the view straight down open.
                 cloud *= smoothstep(_ClearRadius * 0.6, _ClearRadius, length(input.meters));
+                // Far away the sheet fades out, so its edge never draws a line across the clouds on the horizon.
+                cloud *= 1.0 - smoothstep(_FadeDistance.x, _FadeDistance.y, length(input.meters));
 
                 // Thick parts are bright, thin edges take the bluish shadow color.
                 half3 color = lerp(_ShadowColor.rgb, _Color.rgb, saturate((density - (1.0 - _Coverage)) * 3.0));

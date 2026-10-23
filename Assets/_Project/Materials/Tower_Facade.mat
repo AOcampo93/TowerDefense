@@ -33,7 +33,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _FireChance: 0.04
+    - _FireChance: 0.02
     - _LitChance: 0.3
     - _NeonChance: 0
     - _RoofTile: 12

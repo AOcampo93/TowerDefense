@@ -20,9 +20,6 @@ namespace AlienInvaders.Views
 
         private float _turn;
 
-        /// <summary>Degrees the sky has turned so far, so the clouds around the horizon can drift with it.</summary>
-        public float Turn => _turn;
-
         private void OnEnable()
         {
             Apply();

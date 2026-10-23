@@ -10,7 +10,9 @@ namespace AlienInvaders.Views
     /// districts, each district has its own street grid turned at its own angle, and the blocks are rectangles of
     /// irregular sizes split into lots of different widths. The streets are also painted into a map texture that the
     /// ground shader uses, so the asphalt and its orange street lights always match the buildings.
-    /// The player's tower always stays the tallest by a wide margin (no other building comes within 100 m of its top).
+    /// Buildings come in three sizes: small ones everywhere, medium ones scattered, and a few tall ones. The player's
+    /// tower always stays the tallest by a wide margin (no other building comes within 100 m of its top).
+    /// Banks of low mist (drawn by the city shaders) drift between the small buildings.
     /// Buildings are merged into a few big meshes so the headset draws the whole city in a few dozen calls.
     /// It lives on an object that is active from the start, so the city is built while the game loads and not in
     /// the middle of the elevator ride (the city's own root stays hidden until VR).
@@ -19,6 +21,10 @@ namespace AlienInvaders.Views
     {
         private static readonly int CityMapId = Shader.PropertyToID("_AI_CityMap");
         private static readonly int CityMapHalfId = Shader.PropertyToID("_AI_CityMapHalf");
+        private static readonly int CityWorldToLocalId = Shader.PropertyToID("_AI_CityWorldToLocal");
+        private static readonly int MistId = Shader.PropertyToID("_AI_Mist");
+        private static readonly int MistColorId = Shader.PropertyToID("_AI_MistColor");
+        private static readonly int MistNoiseId = Shader.PropertyToID("_AI_MistNoise");
 
         [Tooltip("Parent of everything generated (inside the leaning part of the world).")]
         [SerializeField] private Transform _root;
@@ -29,7 +35,7 @@ namespace AlienInvaders.Views
         [SerializeField] private float _cityRadius = 700f;
         [Tooltip("No regular buildings this close to the tower axis (a small plaza around its base).")]
         [SerializeField] private float _plazaRadius = 15f;
-        [SerializeField] private float _emptyBlockChance = 0.1f;
+        [SerializeField] private float _emptyBlockChance = 0.04f;
         [Tooltip("Size of the square areas merged into one mesh. Bigger = fewer draw calls, coarser culling.")]
         [SerializeField] private float _chunkSize = 240f;
 
@@ -52,11 +58,14 @@ namespace AlienInvaders.Views
         [Header("Heights")]
         [Tooltip("No building may come closer than this to the top of the player's tower.")]
         [SerializeField] private float _clearanceBelowTower = 100f;
-        [Tooltip("Most buildings: low and mid rise.")]
-        [SerializeField] private Vector2 _typicalHeight = new Vector2(12f, 45f);
-        [Tooltip("A few tall towers, spread anywhere in the city.")]
-        [SerializeField] private float _tallChance = 0.07f;
-        [SerializeField] private Vector2 _tallHeight = new Vector2(60f, 100f);
+        [Tooltip("Small buildings: most of the city.")]
+        [SerializeField] private Vector2 _smallHeight = new Vector2(6f, 26f);
+        [Tooltip("Share of medium buildings, scattered all over the city.")]
+        [SerializeField] private float _mediumChance = 0.2f;
+        [SerializeField] private Vector2 _mediumHeight = new Vector2(30f, 60f);
+        [Tooltip("Share of tall buildings, scattered all over the city.")]
+        [SerializeField] private float _tallChance = 0.06f;
+        [SerializeField] private Vector2 _tallHeight = new Vector2(65f, 100f);
 
         [Header("Skyscrapers near the tower")]
         [SerializeField] private int _neighborTowers = 6;
@@ -71,6 +80,16 @@ namespace AlienInvaders.Views
         [SerializeField] private GameObject _smokeColumnPrefab;
         [SerializeField] private int _smokeColumns = 6;
         [SerializeField] private Vector2 _smokeDistance = new Vector2(120f, 450f);
+
+        [Header("Mist between the buildings")]
+        [Tooltip("Height of the mist over the street (meters), about as high as the small buildings.")]
+        [SerializeField] private float _mistTop = 22f;
+        [SerializeField, Range(0f, 1f)] private float _mistStrength = 0.9f;
+        [Tooltip("Speed of the drifting mist banks (meters per second).")]
+        [SerializeField] private float _mistWind = 4f;
+        [SerializeField] private Color _mistColor = new Color(0.5f, 0.4f, 0.56f);
+        [Tooltip("Tileable noise that breaks the mist into banks.")]
+        [SerializeField] private Texture2D _mistNoise;
 
         [Header("Materials")]
         [SerializeField] private Material _buildingMaterial;
@@ -127,12 +146,25 @@ namespace AlienInvaders.Views
         private readonly List<Renderer> _beacons = new List<Renderer>();
         private readonly Avenue[] _avenues = new Avenue[2];
         private readonly District[] _districts = new District[4];
+        // Streets that may cover one pixel of the street map: distance to their center line and half width.
+        private readonly float[] _streetDistance = new float[6];
+        private readonly float[] _streetHalfWidth = new float[6];
+        private int _streetCount;
         private System.Random _random;
         private float _beaconTimer;
 
         private void Awake()
         {
             Generate();
+            Shader.SetGlobalVector(MistId, new Vector4(_groundTop, _mistTop, _mistStrength, _mistWind));
+            Shader.SetGlobalColor(MistColorId, _mistColor);
+            Shader.SetGlobalTexture(MistNoiseId, _mistNoise);
+        }
+
+        private void LateUpdate()
+        {
+            // The mist belongs to the city, so it leans and drops with it.
+            Shader.SetGlobalMatrix(CityWorldToLocalId, _root.worldToLocalMatrix);
         }
 
         private void Update()
@@ -170,7 +202,7 @@ namespace AlienInvaders.Views
                 }
 
                 var chunk = new Vector2Int(Mathf.FloorToInt(lot.Center.x / _chunkSize), Mathf.FloorToInt(lot.Center.y / _chunkSize));
-                float roofY = _groundTop + BuildingHeight();
+                float roofY = _groundTop + BuildingHeight(lot);
                 Color tint = Palette[_random.Next(Palette.Length)] * Lerp(0.9f, 1.05f, Next());
                 AddOrientedBox(Buffer(chunks, chunk), lot, _groundTop, roofY, tint);
                 roofs.Add(new Vector3(lot.Center.x, roofY, lot.Center.y));
@@ -282,7 +314,7 @@ namespace AlienInvaders.Views
             District district = _districts[d];
             float length = x1 - x0;
             float depth = z1 - z0;
-            int rows = depth > 44f && Next() < 0.6f ? 2 : 1;
+            int rows = depth > 34f && Next() < 0.75f ? 2 : 1;
             for (int r = 0; r < rows; r++)
             {
                 float rz0 = z0 + depth * r / rows;
@@ -290,10 +322,10 @@ namespace AlienInvaders.Views
                 float x = x0;
                 while (x < x1 - 8f)
                 {
-                    float width = Mathf.Min(x1 - x, Lerp(14f, 45f, Next()));
-                    float gap = Lerp(0.8f, 3f, Next());
-                    float w = (width - gap) * Lerp(0.75f, 1f, Next());
-                    float h = (rz1 - rz0 - gap) * Lerp(0.7f, 1f, Next());
+                    float width = Mathf.Min(x1 - x, Lerp(10f, 28f, Next()));
+                    float gap = Lerp(0.6f, 2.5f, Next());
+                    float w = (width - gap) * Lerp(0.8f, 1f, Next());
+                    float h = (rz1 - rz0 - gap) * Lerp(0.75f, 1f, Next());
                     var localCenter = new Vector2(x + width * 0.5f, (rz0 + rz1) * 0.5f);
                     var lot = new Lot
                     {
@@ -361,12 +393,25 @@ namespace AlienInvaders.Views
             return picked;
         }
 
-        // Mostly low and mid rise (squaring the random number favors the low end), with a few tall towers anywhere.
-        private float BuildingHeight()
+        // Three sizes: mostly small buildings, medium ones scattered, a few tall ones. Narrow lots stay small (a
+        // 100 m pencil would look wrong).
+        private float BuildingHeight(Lot lot)
         {
-            float height = Next() < _tallChance
-                ? Lerp(_tallHeight.x, _tallHeight.y, Next())
-                : Lerp(_typicalHeight.x, _typicalHeight.y, Next() * Next());
+            float roll = Next();
+            float narrowest = Mathf.Min(lot.Half.x, lot.Half.y) * 2f;
+            float height;
+            if (roll < _tallChance && narrowest > 14f)
+            {
+                height = Lerp(_tallHeight.x, _tallHeight.y, Next());
+            }
+            else if (roll < _tallChance + _mediumChance && narrowest > 10f)
+            {
+                height = Lerp(_mediumHeight.x, _mediumHeight.y, Next());
+            }
+            else
+            {
+                height = Lerp(_smallHeight.x, _smallHeight.y, Next());
+            }
             return Mathf.Min(height, MaxHeight);
         }
 
@@ -470,19 +515,20 @@ namespace AlienInvaders.Views
                 for (int px = 0; px < size; px++)
                 {
                     var point = new Vector2((px + 0.5f) * metersPerPixel - _mapHalfSize, (py + 0.5f) * metersPerPixel - _mapHalfSize);
-                    float edge = float.MaxValue;
-                    float lamp = 0f;
+                    // Streets that may cover this pixel: both avenues and the two nearest lines of each district axis.
+                    _streetCount = 0;
                     for (int a = 0; a < _avenues.Length; a++)
                     {
-                        AddStreet(Mathf.Abs(AvenueSide(point, a)), _avenueWidth * 0.5f, ref edge, ref lamp);
+                        AddCandidate(Mathf.Abs(AvenueSide(point, a)), _avenueWidth * 0.5f);
                     }
                     int d = DistrictOf(point);
                     District district = _districts[d];
                     // Same as Rotate(point, -angle).
                     float localX = point.x * cos[d] - point.y * sin[d];
                     float localZ = point.x * sin[d] + point.y * cos[d];
-                    NearestLine(district.XLines, district.XWidths, localX, ref edge, ref lamp);
-                    NearestLine(district.ZLines, district.ZWidths, localZ, ref edge, ref lamp);
+                    NearestLines(district.XLines, district.XWidths, localX);
+                    NearestLines(district.ZLines, district.ZWidths, localZ);
+                    StreetAt(out float edge, out float lamp);
 
                     byte asphalt = (byte)(Mathf.Clamp01(0.5f - edge / metersPerPixel) * 255f);
                     pixels[py * size + px] = new Color32(asphalt, (byte)(lamp * 255f), 0, 255);
@@ -501,8 +547,8 @@ namespace AlienInvaders.Views
             Shader.SetGlobalFloat(CityMapHalfId, _mapHalfSize);
         }
 
-        // Closest street line of a sorted list (binary search), then the one before it.
-        private static void NearestLine(List<float> lines, List<float> widths, float value, ref float edge, ref float lamp)
+        // Closest street line of a sorted list (binary search), and the one before it.
+        private void NearestLines(List<float> lines, List<float> widths, float value)
         {
             int index = lines.BinarySearch(value);
             if (index < 0)
@@ -513,18 +559,42 @@ namespace AlienInvaders.Views
             {
                 if (k >= 0 && k < lines.Count)
                 {
-                    AddStreet(Mathf.Abs(value - lines[k]), widths[k] * 0.5f, ref edge, ref lamp);
+                    AddCandidate(Mathf.Abs(value - lines[k]), widths[k] * 0.5f);
                 }
             }
         }
 
-        // edge: signed distance to the nearest asphalt (negative inside a street); lamp: glow of the curb lights.
-        private static void AddStreet(float distance, float halfWidth, ref float edge, ref float lamp)
+        private void AddCandidate(float distance, float halfWidth)
         {
-            edge = Mathf.Min(edge, distance - halfWidth);
-            if (distance < halfWidth + 1.5f)
+            _streetDistance[_streetCount] = distance;
+            _streetHalfWidth[_streetCount] = halfWidth;
+            _streetCount++;
+        }
+
+        // edge: signed distance to the nearest asphalt (negative inside a street). lamp: glow of the curb lights. The
+        // lights of a street stop where it crosses another one, so no light lines run across the intersections.
+        private void StreetAt(out float edge, out float lamp)
+        {
+            edge = float.MaxValue;
+            lamp = 0f;
+            for (int i = 0; i < _streetCount; i++)
             {
-                lamp = Mathf.Max(lamp, Mathf.Exp(-Mathf.Abs(distance - halfWidth * 0.8f) * 2.5f));
+                float distance = _streetDistance[i];
+                float halfWidth = _streetHalfWidth[i];
+                edge = Mathf.Min(edge, distance - halfWidth);
+                if (distance >= halfWidth + 1.5f)
+                {
+                    continue;
+                }
+                bool crossing = false;
+                for (int j = 0; j < _streetCount; j++)
+                {
+                    crossing |= j != i && _streetDistance[j] < _streetHalfWidth[j] - 0.5f;
+                }
+                if (!crossing)
+                {
+                    lamp = Mathf.Max(lamp, Mathf.Exp(-Mathf.Abs(distance - halfWidth * 0.8f) * 2.5f));
+                }
             }
         }
 

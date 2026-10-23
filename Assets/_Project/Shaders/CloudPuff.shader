@@ -1,6 +1,6 @@
-// One big cloud sprite (a 2 x 2 atlas of cumulus shapes) for the ring of storm clouds around the horizon. The sprite
-// carries its own shading (lit top, darker base); the particle color tints it, and its base melts into the fog so
-// the clouds rise out of the haze with no visible line where the city ends.
+// One big cloud picture (a 2 x 2 atlas of cumulus shapes) for the clouds around the horizon. The picture carries
+// its own shading (lit top, darker base); the vertex color tints it, and its base melts into the fog so the clouds
+// rise out of the haze with no visible line where the city ends.
 Shader "AlienInvaders/CloudPuff"
 {
     Properties

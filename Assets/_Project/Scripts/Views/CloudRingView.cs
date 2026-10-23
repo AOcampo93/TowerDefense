@@ -4,100 +4,155 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// A ring of huge storm clouds (cumulonimbus) all around the city, of different shapes and sizes, so the line
-    /// between the ground and the sky disappears behind them in every direction. Each cloud is one big sprite (one of
-    /// four shapes) rising out of the cloud sea, sometimes with smaller ones at its feet; they are placed once from a
-    /// fixed seed and drawn by a particle system that never moves them; the whole ring only turns with the sky.
-    /// Clouds facing the setting sun are tinted pink, the others violet.
+    /// The clouds all around the horizon, so the line between the ground and the sky disappears in every direction:
+    /// a low band of wide clouds right on the horizon, and huge storm clouds (cumulonimbus) of different shapes and
+    /// sizes rising from it. Every cloud is a flat picture (one of the four shapes of a 2 x 2 atlas) standing still in
+    /// the world and turned towards the tower, all merged into one mesh built once from a fixed seed. They never
+    /// turn with the player's head, so they stay put like real clouds. Clouds facing the setting sun are tinted pink,
+    /// the others violet.
     /// </summary>
-    [RequireComponent(typeof(ParticleSystem))]
+    [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class CloudRingView : MonoBehaviour
     {
-        [SerializeField] private SkyController _sky;
+        // Height of the flat base inside each cloud picture (share of the picture, from its bottom edge).
+        private const float BaseInPicture = 0.12f;
+        // The wide, low cloud of the atlas (bottom left cell).
+        private const int WideShape = 0;
+
         [SerializeField] private int _seed = 31;
+
+        [Header("Storm clouds")]
         [SerializeField] private int _clouds = 40;
         [Tooltip("Distance range from the tower (meters).")]
         [SerializeField] private Vector2 _distance = new Vector2(620f, 880f);
         [Tooltip("Height range of the cloud bases, relative to the player (the street is at -200).")]
-        [SerializeField] private Vector2 _baseHeight = new Vector2(-200f, -150f);
-        [Tooltip("Size range of the main clouds (meters).")]
-        [SerializeField] private Vector2 _cloudSize = new Vector2(300f, 650f);
-        [Tooltip("Compass direction of the sun before the sky turns (degrees from +Z towards +X), to light the clouds facing it.")]
+        [SerializeField] private Vector2 _baseHeight = new Vector2(-250f, -205f);
+        [Tooltip("Size range of the storm clouds (meters).")]
+        [SerializeField] private Vector2 _cloudSize = new Vector2(260f, 520f);
+
+        [Header("Low band on the horizon")]
+        [SerializeField] private int _bandClouds = 70;
+        [SerializeField] private Vector2 _bandDistance = new Vector2(700f, 900f);
+        [SerializeField] private Vector2 _bandBase = new Vector2(-245f, -220f);
+        [SerializeField] private Vector2 _bandSize = new Vector2(200f, 360f);
+
+        [Header("Color")]
+        [Tooltip("Compass direction of the sun (degrees from +Z towards +X), to light the clouds facing it.")]
         [SerializeField] private float _sunAzimuth = 117.4f;
         [SerializeField] private Color _litColor = new Color(1f, 0.74f, 0.78f);
         [SerializeField] private Color _shadeColor = new Color(0.72f, 0.62f, 0.92f);
 
-        private ParticleSystem _system;
-        private ParticleSystem.Particle[] _sprites;
+        private struct Cloud
+        {
+            public float Azimuth;
+            public float Distance;
+            public float BaseY;
+            public float Size;
+            public int Shape;
+            public bool Mirrored;
+        }
+
+        private System.Random _random;
 
         private void Awake()
         {
-            _system = GetComponent<ParticleSystem>();
-            _sprites = BuildSprites();
+            GetComponent<MeshFilter>().sharedMesh = BuildMesh();
         }
 
-        private void OnEnable()
+        private Mesh BuildMesh()
         {
-            // Turning the object off clears its particles, so the clouds are put back every time it turns on.
-            _system.Play();
-            _system.SetParticles(_sprites, _sprites.Length);
-            // Paused particles keep rendering but never age or move: the clouds stay where they were placed.
-            _system.Pause();
-        }
-
-        private void LateUpdate()
-        {
-            // The sun turns with the sky, so the ring turns too and its lit side keeps facing the sun.
-            transform.localRotation = Quaternion.Euler(0f, -_sky.Turn, 0f);
-        }
-
-        private ParticleSystem.Particle[] BuildSprites()
-        {
-            var random = new System.Random(_seed);
-            float Next() => (float)random.NextDouble();
-            float Lerp(float a, float b, float t) => a + (b - a) * t;
-
-            var sprites = new List<ParticleSystem.Particle>();
+            _random = new System.Random(_seed);
+            var clouds = new List<Cloud>();
+            for (int c = 0; c < _bandClouds; c++)
+            {
+                float azimuth = (c + Lerp(-0.5f, 0.5f, Next())) * 360f / _bandClouds;
+                clouds.Add(NewCloud(azimuth, _bandDistance, _bandBase, _bandSize, WideShape));
+            }
             for (int c = 0; c < _clouds; c++)
             {
                 float azimuth = (c + Lerp(-0.45f, 0.45f, Next())) * 360f / _clouds;
-                float distance = Lerp(_distance.x, _distance.y, Next());
-                float baseY = Lerp(_baseHeight.x, _baseHeight.y, Next());
-                float size = Lerp(_cloudSize.x, _cloudSize.y, Next());
-                // One big storm cloud, sometimes with one or two smaller ones at its feet.
-                AddSprite(sprites, azimuth, distance, baseY, size, (uint)random.Next());
-                int companions = random.Next(0, 3);
-                for (int k = 0; k < companions; k++)
-                {
-                    float side = (Next() < 0.5f ? -1f : 1f) * Lerp(0.25f, 0.45f, Next()) * size;
-                    float companionSize = size * Lerp(0.4f, 0.7f, Next());
-                    float companionAzimuth = azimuth + side / distance * Mathf.Rad2Deg;
-                    AddSprite(sprites, companionAzimuth, distance - Lerp(20f, 60f, Next()), baseY - Lerp(0f, 20f, Next()),
-                        companionSize, (uint)random.Next());
-                }
+                clouds.Add(NewCloud(azimuth, _distance, _baseHeight, _cloudSize, _random.Next(4)));
             }
-            return sprites.ToArray();
+            // Transparent pictures must be drawn from the farthest to the nearest; the player is always at the center.
+            clouds.Sort((a, b) => b.Distance.CompareTo(a.Distance));
+
+            var vertices = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var colors = new List<Color>();
+            var triangles = new List<int>();
+            foreach (Cloud cloud in clouds)
+            {
+                AddPicture(cloud, vertices, uvs, colors, triangles);
+            }
+            var mesh = new Mesh { name = "CloudRing" };
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uvs);
+            mesh.SetColors(colors);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
-        // A cloud sprite standing on the cloud sea: its flat base (12 percent up the picture) sits at baseY.
-        private void AddSprite(List<ParticleSystem.Particle> sprites, float azimuth, float distance, float baseY,
-            float size, uint seed)
+        private Cloud NewCloud(float azimuth, Vector2 distance, Vector2 baseY, Vector2 size, int shape)
         {
-            float radians = azimuth * Mathf.Deg2Rad;
-            var outward = new Vector3(Mathf.Sin(radians), 0f, Mathf.Cos(radians));
-            // Clouds facing the low sun are lit warm, the others stay in violet shade.
-            float facing = Mathf.Clamp01(Mathf.Cos((azimuth - _sunAzimuth) * Mathf.Deg2Rad));
-            sprites.Add(new ParticleSystem.Particle
+            return new Cloud
             {
-                position = outward * distance + Vector3.up * (baseY + size * 0.38f),
-                startSize = size,
-                startColor = Color.Lerp(_shadeColor, _litColor, facing * facing),
-                startLifetime = 1e6f,
-                remainingLifetime = 1e6f,
-                rotation = 0f,
-                // The particle's random seed also picks which of the four cloud shapes it shows.
-                randomSeed = seed
-            });
+                Azimuth = azimuth,
+                Distance = Lerp(distance.x, distance.y, Next()),
+                BaseY = Lerp(baseY.x, baseY.y, Next()),
+                Size = Lerp(size.x, size.y, Next()),
+                Shape = shape,
+                Mirrored = Next() < 0.5f
+            };
         }
+
+        // One upright picture facing the tower, its flat base at the cloud's base height.
+        private void AddPicture(Cloud cloud, List<Vector3> vertices, List<Vector2> uvs, List<Color> colors, List<int> triangles)
+        {
+            float radians = cloud.Azimuth * Mathf.Deg2Rad;
+            var outward = new Vector3(Mathf.Sin(radians), 0f, Mathf.Cos(radians));
+            Vector3 right = Vector3.Cross(Vector3.up, outward) * (cloud.Size * 0.5f);
+            Vector3 bottom = outward * cloud.Distance + Vector3.up * (cloud.BaseY - cloud.Size * BaseInPicture);
+            Vector3 up = Vector3.up * cloud.Size;
+
+            int first = vertices.Count;
+            vertices.Add(bottom - right);
+            vertices.Add(bottom - right + up);
+            vertices.Add(bottom + right + up);
+            vertices.Add(bottom + right);
+
+            // Cell of the 2 x 2 atlas, a hair inside its borders so neighbors never bleed in.
+            const float Inset = 0.002f;
+            float u0 = (cloud.Shape % 2) * 0.5f + Inset;
+            float u1 = u0 + 0.5f - Inset * 2f;
+            float v0 = (cloud.Shape / 2) * 0.5f + Inset;
+            float v1 = v0 + 0.5f - Inset * 2f;
+            if (cloud.Mirrored)
+            {
+                (u0, u1) = (u1, u0);
+            }
+            uvs.Add(new Vector2(u0, v0));
+            uvs.Add(new Vector2(u0, v1));
+            uvs.Add(new Vector2(u1, v1));
+            uvs.Add(new Vector2(u1, v0));
+
+            // Clouds facing the low sun are lit warm, the others stay in violet shade.
+            float facing = Mathf.Clamp01(Mathf.Cos((cloud.Azimuth - _sunAzimuth) * Mathf.Deg2Rad));
+            Color tint = Color.Lerp(_shadeColor, _litColor, facing * facing);
+            for (int i = 0; i < 4; i++)
+            {
+                colors.Add(tint);
+            }
+            triangles.Add(first);
+            triangles.Add(first + 1);
+            triangles.Add(first + 2);
+            triangles.Add(first);
+            triangles.Add(first + 2);
+            triangles.Add(first + 3);
+        }
+
+        private float Next() => (float)_random.NextDouble();
+
+        private static float Lerp(float a, float b, float t) => a + (b - a) * t;
     }
 }
