@@ -46,6 +46,7 @@ namespace AlienInvaders.Views
         [SerializeField] private float _lockPulseAmplitude = 0.8f;
 
         [Header("Sound")]
+        [SerializeField] private GameSounds _sounds;
         [SerializeField] private AudioSource _audio;
         [SerializeField] private float _shotVolume = 0.5f;
 
@@ -127,7 +128,7 @@ namespace AlienInvaders.Views
             _beam.enabled = true;
             _muzzleFlash.SetActive(true);
             _beamTimer = _beamSeconds;
-            _audio.PlayOneShot(PlaceholderSounds.PlayerShot, _shotVolume);
+            _audio.PlayOneShot(_sounds.PlayerShot, _shotVolume);
 
             // The shot that overheats the weapon already fired the overheat kick (OnOverheated comes first), and a
             // new pulse replaces the one in progress, so the short shot tick would cut the kick short.
@@ -140,7 +141,7 @@ namespace AlienInvaders.Views
         private void HandleOverheated()
         {
             ControllerHaptics.PulseRight(_overheatPulseAmplitude, _overheatPulseSeconds);
-            _audio.PlayOneShot(PlaceholderSounds.Overheat);
+            _audio.PlayOneShot(_sounds.Overheat);
             _overheatKickTimer = _overheatPulseSeconds;
         }
 

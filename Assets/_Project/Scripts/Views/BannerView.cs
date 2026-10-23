@@ -19,6 +19,7 @@ namespace AlienInvaders.Views
         [SerializeField] private TMP_Text _title;
         [SerializeField] private TMP_Text _subtitle;
         [SerializeField] private TMP_Text _countdown;
+        [SerializeField] private GameSounds _sounds;
         [SerializeField] private AudioSource _audio;
 
         [Header("Colors")]
@@ -123,7 +124,7 @@ namespace AlienInvaders.Views
             string hint = wave.Number == 1 ? "SHOOT THEM WHILE THEY AIM" : string.Empty;
             Show("DEFEND THE TOWER", hint, _alertColor, 1.5f);
             _audio.pitch = 1f;
-            _audio.PlayOneShot(PlaceholderSounds.Go);
+            _audio.PlayOneShot(_sounds.Go);
         }
 
         private void HandleWaveCleared(WaveConfig wave)
@@ -144,7 +145,7 @@ namespace AlienInvaders.Views
                 _countdown.text = count.ToString();
                 _punchTimer = _punchSeconds;
                 _audio.pitch = count == 1 ? 1.5f : 1f;
-                _audio.PlayOneShot(PlaceholderSounds.Beep);
+                _audio.PlayOneShot(_sounds.Beep);
             }
 
             _punchTimer = Mathf.Max(0f, _punchTimer - Time.deltaTime);

@@ -14,6 +14,7 @@ namespace AlienInvaders.Views
         [SerializeField] private Transform _visual;
         [SerializeField] private Transform _outerRing;
         [SerializeField] private Transform _innerRing;
+        [SerializeField] private GameSounds _sounds;
         [SerializeField] private AudioSource _hum;
 
         [Header("Feel")]
@@ -43,7 +44,7 @@ namespace AlienInvaders.Views
             _closing = false;
             _onClosed = null;
             SetOpenness(0f);
-            _hum.clip = PlaceholderSounds.PortalHum;
+            _hum.clip = _sounds.PortalHum;
             _hum.loop = true;
             _hum.Play();
         }

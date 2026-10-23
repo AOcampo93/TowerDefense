@@ -451,6 +451,7 @@ MonoBehaviour:
   _visual: {fileID: 8696894324434055167}
   _outerRing: {fileID: 915455387792260373}
   _innerRing: {fileID: 1407552680968815395}
+  _sounds: {fileID: 11400000, guid: 9a5c9eccd5c324e5d8b28cc4563627ea, type: 2}
   _hum: {fileID: 7538161268586970712}
   _spinSpeed: 45
   _pulseRate: 1.2

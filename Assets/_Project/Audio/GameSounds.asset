@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30ac45f6b69ff4a6f971ff6873fbfe29, type: 3}
+  m_Name: GameSounds
+  m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.GameSounds
+  _playerShots:
+  - {fileID: 8300000, guid: 7fb997b2a64d44edda05badbe4134473, type: 3}
+  - {fileID: 8300000, guid: 11962aaa5b1f34d7f8a2d76ed1886a77, type: 3}
+  - {fileID: 8300000, guid: 9ed07383a3e5247b78beb381868e7f33, type: 3}
+  - {fileID: 8300000, guid: a08839a93b5c2443d8da1759566c1fe2, type: 3}
+  _overheat: {fileID: 8300000, guid: 6665c8fbdab9f48fdb1f6752b165157a, type: 3}
+  _shipEngine: {fileID: 8300000, guid: e693dd080122448f8b14bc977d84a768, type: 3}
+  _charge: {fileID: 0}
+  _enemyShots:
+  - {fileID: 8300000, guid: 5e18c78aba77a46a08ec9d2dbb1dd697, type: 3}
+  - {fileID: 8300000, guid: fbbe8bdcc585749879236a544865bc5b, type: 3}
+  - {fileID: 8300000, guid: 426c95fc5fe754fff95fe70f5878b4f3, type: 3}
+  - {fileID: 8300000, guid: 585c20fa850a84d58addf01a5771dc5c, type: 3}
+  - {fileID: 8300000, guid: c5b5f161a89874924a596b1a1097bdc4, type: 3}
+  _explosions:
+  - {fileID: 8300000, guid: 1b1e9d2d41dfe4cf78bcbde027385c8a, type: 3}
+  - {fileID: 8300000, guid: c77f455bc1ab14d4a99d081608ac1b07, type: 3}
+  - {fileID: 8300000, guid: 46b0a9920868c4f23a41078924eb45d0, type: 3}
+  - {fileID: 8300000, guid: 15bacef75bdc248f08c0e77c5a16e013, type: 3}
+  - {fileID: 8300000, guid: f43b117d8e2724003949fdc9d9f24382, type: 3}
+  _portalHum: {fileID: 8300000, guid: e0c9a3733a3564d5fb9a523cd6c66fb5, type: 3}
+  _towerRumble: {fileID: 8300000, guid: 82645fe68e65641f7b0d7024fb767ac5, type: 3}
+  _alarm: {fileID: 8300000, guid: 68aba6a158009453d8d02a8ded07459c, type: 3}
+  _wind: {fileID: 8300000, guid: 86e439d1886914ee48f65c5c80ba2680, type: 3}
+  _elevatorRide: {fileID: 8300000, guid: fc88cf0a682f54d42807cc0ef6351f51, type: 3}
+  _doorOpen: {fileID: 8300000, guid: a162c659919364b3695093c0bbb21e2f, type: 3}
+  _doorClose: {fileID: 8300000, guid: 07255be290db74669b25821cf7927173, type: 3}
+  _beep: {fileID: 0}
+  _go: {fileID: 0}

@@ -12,6 +12,7 @@ namespace AlienInvaders.Views
     public class TowerSoundsView : MonoBehaviour
     {
         [SerializeField] private GameController _game;
+        [SerializeField] private GameSounds _sounds;
         [SerializeField] private AudioSource _rumble;
         [SerializeField] private AudioSource _alarm;
         [SerializeField] private float _alarmVolume = 0.35f;
@@ -44,7 +45,7 @@ namespace AlienInvaders.Views
         {
             // 75 % sounds at normal pitch; every later drop (and the collapse at 0 %) sounds deeper.
             _rumble.pitch = Mathf.Lerp(0.7f, 1f, threshold / 75f);
-            _rumble.PlayOneShot(PlaceholderSounds.Rumble);
+            _rumble.PlayOneShot(_sounds.TowerRumble);
         }
 
         private void HandleStateChanged(GameState state)
@@ -52,7 +53,7 @@ namespace AlienInvaders.Views
             bool alarm = state == GameState.Critical || state == GameState.Rescue;
             if (alarm && !_alarm.isPlaying)
             {
-                _alarm.clip = PlaceholderSounds.Alarm;
+                _alarm.clip = _sounds.Alarm;
                 _alarm.loop = true;
                 _alarm.volume = _alarmVolume;
                 _alarm.Play();

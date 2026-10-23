@@ -15,6 +15,7 @@ namespace AlienInvaders.Views
         [SerializeField] private float _seconds = 0.6f;
         [SerializeField] private Color _startColor = new Color(1f, 0.9f, 0.45f, 1f);
         [SerializeField] private Color _endColor = new Color(0.9f, 0.15f, 0.02f, 0f);
+        [SerializeField] private GameSounds _sounds;
         [SerializeField] private AudioSource _audio;
         [Tooltip("Explosions this size (meters) or bigger play at full volume; smaller ones are quieter and higher.")]
         [SerializeField] private float _fullVolumeSize = 6f;
@@ -40,7 +41,7 @@ namespace AlienInvaders.Views
             _fireball.enabled = true;
             Animate(0f);
 
-            AudioClip boom = PlaceholderSounds.Explosion;
+            AudioClip boom = _sounds.Explosion;
             float strength = Mathf.Clamp01(size / _fullVolumeSize);
             _audio.pitch = UnityEngine.Random.Range(0.85f, 1.15f) * Mathf.Lerp(1.5f, 1f, strength);
             _audio.PlayOneShot(boom, Mathf.Lerp(0.4f, 1f, strength));

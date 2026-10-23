@@ -62,6 +62,12 @@ namespace AlienInvaders.Views
         [SerializeField] private float _rescueMetersPerPulse = 1f;
         [SerializeField] private float _rescuePulseAmplitude = 1f;
         [SerializeField] private float _pulseSeconds = 0.1f;
+        [Header("Sound")]
+        [SerializeField] private GameSounds _sounds;
+        [Tooltip("Machinery hum while the cabin moves (its pitch follows the speed) and the door sounds.")]
+        [SerializeField] private AudioSource _machine;
+        [SerializeField] private float _machineVolume = 0.6f;
+
         [Tooltip("Seconds the emergency cabin takes to slam shut during the rescue.")]
         [SerializeField] private float _rescueCloseSeconds = 0.4f;
 
@@ -104,6 +110,8 @@ namespace AlienInvaders.Views
             SetClosedAmount(0f);
             SetLightsVisible(false);
             _shaft.SetActive(false);
+            // A ride cut short by a state change must not leave the machinery humming.
+            _machine.Stop();
         }
 
         /// <summary>
@@ -113,6 +121,7 @@ namespace AlienInvaders.Views
         public IEnumerator Close(float seconds)
         {
             yield return AnimateCabin(0f, 1f, seconds);
+            PlayDoor(_sounds.DoorClose);
         }
 
         /// <summary>Coroutine: the roof opens to the sky and the walls sink under the player's feet.</summary>
@@ -120,6 +129,7 @@ namespace AlienInvaders.Views
         {
             SetLightsVisible(false);
             _shaft.SetActive(false); // at the top there is no shaft above the cabin anymore
+            PlayDoor(_sounds.DoorOpen);
             yield return AnimateCabin(1f, 0f, seconds);
         }
 
@@ -139,6 +149,7 @@ namespace AlienInvaders.Views
         public IEnumerator PlayRescue(float seconds)
         {
             yield return AnimateCabin(0f, 1f, _rescueCloseSeconds);
+            PlayDoor(_sounds.DoorClose);
             yield return Ride(seconds, 1f, _rescueLightSpeed, _rescueRampSeconds, _alarmLight, _rescueMetersPerPulse, _rescuePulseAmplitude);
         }
 
@@ -166,6 +177,14 @@ namespace AlienInvaders.Views
 
             // Length of the whole ride, so the end of the tunnel reaches the dome exactly when the cabin stops.
             float distance = RideDistance(seconds, maxSpeed, rampSeconds);
+            AudioClip hum = _sounds.ElevatorRide;
+            if (hum != null)
+            {
+                _machine.clip = hum;
+                _machine.loop = true;
+                _machine.volume = 0f;
+                _machine.Play();
+            }
             float travelled = 0f;
             float nextPulse = metersPerPulse;
             for (float t = 0f; t < seconds; t += Time.deltaTime)
@@ -178,6 +197,10 @@ namespace AlienInvaders.Views
                 // Going up, the open end of the tunnel comes down to meet the dome; falling, the tunnel grows above.
                 LayoutShaft(direction < 0f ? distance - travelled : travelled);
 
+                // The machinery hums louder and higher as the cabin speeds up (a falling cabin screams higher).
+                _machine.volume = _machineVolume * ramp;
+                _machine.pitch = Mathf.Lerp(0.6f, 1.1f, ramp) * (direction > 0f ? 1.25f : 1f);
+
                 // One pulse every few meters, like passing floor after floor: the beat follows the speed,
                 // and the pulses get stronger as the cabin reaches full speed.
                 if (travelled >= nextPulse)
@@ -188,6 +211,16 @@ namespace AlienInvaders.Views
                 yield return null;
             }
             LayoutShaft(direction < 0f ? 0f : distance);
+            _machine.Stop();
+            _machine.pitch = 1f;
+        }
+
+        private void PlayDoor(AudioClip clip)
+        {
+            if (clip != null)
+            {
+                _machine.PlayOneShot(clip);
+            }
         }
 
         // Speed factor from 0 to 1: it ramps up at the start and down at the end, like a real elevator.

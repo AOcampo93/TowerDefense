@@ -30,6 +30,7 @@ namespace AlienInvaders.Views
         [SerializeField] private float _fireSeconds = 0.2f;
 
         [Header("Sound")]
+        [SerializeField] private GameSounds _sounds;
         [SerializeField] private AudioSource _engine;
         [Tooltip("Charging buzz and shot.")]
         [SerializeField] private AudioSource _voice;
@@ -52,7 +53,7 @@ namespace AlienInvaders.Views
             _lastYaw = transform.eulerAngles.y;
             // So ships of the same wave do not bob (or hum) in sync.
             _bobOffset = Random.value * 10f;
-            _engine.clip = PlaceholderSounds.Engine;
+            _engine.clip = _sounds.ShipEngine;
             _engine.loop = true;
             _engine.pitch = Random.Range(0.9f, 1.1f);
             _engine.Play();
@@ -73,7 +74,7 @@ namespace AlienInvaders.Views
             _aimSeconds = Mathf.Max(0.01f, seconds);
             _aimTimer = _aimSeconds;
             _aimLaser.enabled = true;
-            _voice.clip = PlaceholderSounds.Charge;
+            _voice.clip = _sounds.Charge;
             _voice.loop = true;
             _voice.pitch = _chargePitchStart;
             _voice.Play();
@@ -89,7 +90,7 @@ namespace AlienInvaders.Views
             _voice.Stop();
             _voice.loop = false;
             _voice.pitch = 1f;
-            _voice.PlayOneShot(PlaceholderSounds.EnemyShot);
+            _voice.PlayOneShot(_sounds.EnemyShot);
         }
 
         private void LateUpdate()

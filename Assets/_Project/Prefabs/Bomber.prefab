@@ -802,6 +802,7 @@ MonoBehaviour:
   _aimWidthEnd: 0.12
   _fireWidth: 0.35
   _fireSeconds: 0.2
+  _sounds: {fileID: 11400000, guid: 9a5c9eccd5c324e5d8b28cc4563627ea, type: 2}
   _engine: {fileID: 1240369426876933736}
   _voice: {fileID: 6878010409669486434}
   _chargePitchStart: 0.8
