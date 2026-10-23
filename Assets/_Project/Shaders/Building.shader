@@ -1,31 +1,35 @@
-// Building that reads as a building: concrete walls and gravel roofs (textures sized in meters), lit by the sun,
-// with a grid of windows (a few lit, a few on fire and glowing softly) and some neon signs. The windows are computed
-// from the object's own space in meters, so boxes of any size get the right number of floors and the pattern stays
-// glued to the walls while the city leans. When a window gets smaller than a few pixels the grid melts into its
-// average color, so the far city does not shimmer on the headset. Low mist fills the streets between the buildings.
+// Buildings drawn like a flat night city illustration: near black walls, strips of warm yellow and orange windows,
+// neon outlines along the edges and the roof, glass towers glowing in their neon color, and the warm glow of the
+// street lights climbing the lower floors. Each building gets its own style from its vertex color (r = neon color,
+// g = random seed, b = neon outline on or off, a = glass tower), so a merged city mesh still has varied buildings.
+// The window grid and the outlines are measured in meters along each wall (UVs), so they stay glued to the walls
+// while the city leans. When a window or an outline gets smaller than a few pixels it melts into its average color,
+// so the far city does not shimmer on the headset. Low mist fills the streets between the buildings.
 Shader "AlienInvaders/Building"
 {
     Properties
     {
-        _BaseColor ("Wall Tint", Color) = (0.24, 0.22, 0.22, 1)
-        _RoofColor ("Roof Tint", Color) = (0.12, 0.11, 0.11, 1)
-        [NoScaleOffset] _WallTex ("Wall Texture", 2D) = "white" {}
-        [NoScaleOffset] _RoofTex ("Roof Texture", 2D) = "white" {}
-        _WallTile ("Wall Texture Size (meters)", Float) = 8
-        _RoofTile ("Roof Texture Size (meters)", Float) = 12
-        _WindowColor ("Dark Window", Color) = (0.04, 0.05, 0.07, 1)
-        _LitColor ("Lit Window", Color) = (1, 0.68, 0.32, 1)
-        _FireColor ("Burning Window", Color) = (1, 0.32, 0.06, 1)
-        _CellSize ("Window Cell (width, height in meters)", Vector) = (2.5, 3.2, 0, 0)
-        _WindowFill ("Window Share Of The Cell (x, y)", Vector) = (0.55, 0.5, 0, 0)
-        _UseVertexColor ("Tint Each Building With Its Vertex Color", Range(0, 1)) = 0
-        _LitChance ("Lit Windows", Range(0, 1)) = 0.25
-        _FireChance ("Burning Windows", Range(0, 1)) = 0.04
+        _WallColor ("Wall", Color) = (0.035, 0.035, 0.07, 1)
+        _WallLitColor ("Wall Facing The Sun", Color) = (0.09, 0.07, 0.14, 1)
+        _RoofColor ("Roof", Color) = (0.03, 0.03, 0.05, 1)
+        _WindowColor ("Dark Window", Color) = (0.07, 0.08, 0.15, 1)
+        _LitColorA ("Lit Window (yellow)", Color) = (1, 0.86, 0.32, 1)
+        _LitColorB ("Lit Window (orange)", Color) = (1, 0.55, 0.16, 1)
+        _NeonA ("Neon (pink)", Color) = (1, 0.25, 0.65, 1)
+        _NeonB ("Neon (cyan)", Color) = (0.25, 0.85, 1, 1)
+        _NeonC ("Neon (yellow)", Color) = (1, 0.8, 0.25, 1)
+        _NeonD ("Neon (orange)", Color) = (1, 0.45, 0.15, 1)
+        _CellSize ("Window Cell (width, height in meters)", Vector) = (2.4, 3.2, 0, 0)
+        _WindowFill ("Window Share Of The Cell (x, y)", Vector) = (0.82, 0.42, 0, 0)
+        _LitChance ("Lit Window Strips", Range(0, 1)) = 0.45
+        _EdgeWidth ("Neon Outline Width (meters)", Float) = 0.6
+        _StreetGlow ("Street Light Glow On The Lower Floors", Range(0, 2)) = 0.8
+        _StreetGlowHeight ("Street Light Glow Height (meters)", Float) = 30
+        _GlassGlow ("Glow Of Glass Towers", Range(0, 1)) = 0.35
         _DetailFade ("Windows Fade Into Average (start, end meters)", Vector) = (300, 600, 0, 0)
-        _NeonChance ("Neon Signs", Range(0, 1)) = 0
-        _NeonA ("Neon A", Color) = (1, 0.2, 0.7, 1)
-        _NeonB ("Neon B", Color) = (0.2, 0.85, 1, 1)
-        _NeonC ("Neon C", Color) = (0.65, 0.3, 1, 1)
+        _UseVertexColor ("Style From The Vertex Color", Range(0, 1)) = 1
+        _Style ("Style Otherwise (neon color, seed, outline, glass)", Vector) = (0.1, 0.5, 1, 0)
+        _UVInMeters ("UVs Are Meters (merged city meshes); off for plain cubes", Range(0, 1)) = 1
     }
 
     SubShader
@@ -47,29 +51,28 @@ Shader "AlienInvaders/Building"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "CityMist.hlsl"
 
-            TEXTURE2D(_WallTex);
-            SAMPLER(sampler_WallTex);
-            TEXTURE2D(_RoofTex);
-            SAMPLER(sampler_RoofTex);
-
             CBUFFER_START(UnityPerMaterial)
-                float _WallTile;
-                float _RoofTile;
-                half4 _BaseColor;
+                half4 _WallColor;
+                half4 _WallLitColor;
                 half4 _RoofColor;
                 half4 _WindowColor;
-                half4 _LitColor;
-                half4 _FireColor;
-                float4 _CellSize;
-                float4 _WindowFill;
-                half _LitChance;
-                half _FireChance;
-                half _UseVertexColor;
-                float4 _DetailFade;
-                half _NeonChance;
+                half4 _LitColorA;
+                half4 _LitColorB;
                 half4 _NeonA;
                 half4 _NeonB;
                 half4 _NeonC;
+                half4 _NeonD;
+                float4 _CellSize;
+                float4 _WindowFill;
+                half _LitChance;
+                float _EdgeWidth;
+                half _StreetGlow;
+                float _StreetGlowHeight;
+                half _GlassGlow;
+                float4 _DetailFade;
+                half _UseVertexColor;
+                half4 _Style;
+                half _UVInMeters;
             CBUFFER_END
 
             struct Attributes
@@ -77,17 +80,19 @@ Shader "AlienInvaders/Building"
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
                 half4 color : COLOR;
+                float2 uv0 : TEXCOORD0;
+                float2 uv1 : TEXCOORD1;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
-                half3 tint : COLOR;
-                float3 positionMeters : TEXCOORD0; // object space scaled to meters, base of the box at y = 0
-                float3 normalOS : TEXCOORD1;
-                float3 normalWS : TEXCOORD2;
-                float3 scale : TEXCOORD3;
+                half4 style : COLOR;
+                float2 faceUV : TEXCOORD0;   // meters across the face: along the wall and up from its base
+                float2 faceSize : TEXCOORD1; // size of the face in meters
+                float3 normalOS : TEXCOORD2;
+                float3 normalWS : TEXCOORD3;
                 half fogFactor : TEXCOORD4;
                 float distance : TEXCOORD5;
                 float3 cityPosition : TEXCOORD6;
@@ -101,12 +106,23 @@ Shader "AlienInvaders/Building"
                 ZERO_INITIALIZE(Varyings, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-                float3 scale = float3(length(UNITY_MATRIX_M._m00_m10_m20), length(UNITY_MATRIX_M._m01_m11_m21),
-                                      length(UNITY_MATRIX_M._m02_m12_m22));
-                output.scale = scale;
-                // Merged city meshes carry one color per building, so the blocks are not all the same white.
-                output.tint = lerp(half3(1.0, 1.0, 1.0), input.color.rgb, _UseVertexColor);
-                output.positionMeters = (input.positionOS.xyz + float3(0.0, 0.5, 0.0)) * scale;
+                output.style = lerp(_Style, input.color, _UseVertexColor);
+                if (_UVInMeters > 0.5)
+                {
+                    // Merged city meshes carry the meters of each face in their UVs.
+                    output.faceUV = input.uv0;
+                    output.faceSize = input.uv1;
+                }
+                else
+                {
+                    // A plain cube: its UVs go from 0 to 1 on every face, so they are scaled by the object's size.
+                    float3 scale = float3(length(UNITY_MATRIX_M._m00_m10_m20), length(UNITY_MATRIX_M._m01_m11_m21),
+                                          length(UNITY_MATRIX_M._m02_m12_m22));
+                    float3 n = abs(input.normalOS);
+                    float2 size = n.y > 0.5 ? scale.xz : float2(n.x > 0.5 ? scale.z : scale.x, scale.y);
+                    output.faceSize = size;
+                    output.faceUV = input.uv0 * size;
+                }
                 output.normalOS = input.normalOS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
@@ -117,7 +133,7 @@ Shader "AlienInvaders/Building"
                 return output;
             }
 
-            // Cheap stable random number for a window cell (same cell = same number every frame).
+            // Cheap stable random number (same input = same number every frame).
             float Hash(float3 p)
             {
                 p = frac(p * 0.3183099 + 0.1);
@@ -125,70 +141,72 @@ Shader "AlienInvaders/Building"
                 return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
             }
 
+            half3 Neon(half pick)
+            {
+                return pick < 0.25 ? _NeonA.rgb : (pick < 0.5 ? _NeonB.rgb : (pick < 0.75 ? _NeonC.rgb : _NeonD.rgb));
+            }
+
             half4 Frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-                float3 normalWS = normalize(input.normalWS);
-                Light sun = GetMainLight();
-                half3 lighting = SampleSH(normalWS) + sun.color * saturate(dot(normalWS, sun.direction));
+                bool roof = abs(input.normalOS.y) > 0.5;
+                half3 neon = Neon(input.style.r);
+                half seed = input.style.g;
+                bool outlined = input.style.b > 0.5;
+                half glass = input.style.a;
 
-                // Window grid of the wall: horizontal coordinate along the wall, vertical from the base (floors).
-                // Worked out before any branch, because screen derivatives need every pixel of the quad.
-                float3 along = normalize(cross(float3(0.0, 1.0, 0.0), input.normalOS + float3(0.0, 0.0, 0.0001)));
-                float2 grid = float2(dot(input.positionMeters, along), input.positionMeters.y) / _CellSize.xy;
+                // Everything that needs screen derivatives is worked out before any branch.
+                float2 grid = input.faceUV / _CellSize.xy;
                 float2 cellPixels = 1.0 / max(fwidth(grid), 0.0001);
                 // 0 when a window cell is under 3 pixels on screen, 1 from 8 pixels up.
                 half detail = saturate((min(cellPixels.x, cellPixels.y) - 3.0) / 5.0);
+                float2 fromStart = input.faceUV;
+                float2 fromEnd = input.faceSize - input.faceUV;
+                // Distance to the outline: the side edges and the top of a wall, all four edges of a roof.
+                float edge = roof ? min(min(fromStart.x, fromEnd.x), min(fromStart.y, fromEnd.y))
+                                  : min(min(fromStart.x, fromEnd.x), fromEnd.y);
+                float edgeStep = max(fwidth(edge), 0.0001);
 
-                half3 color;
-                if (abs(input.normalOS.y) > 0.5)
+                // Flat shading like an illustration: only the faces turned to the sun are a touch lighter.
+                Light sun = GetMainLight();
+                half facing = saturate(dot(normalize(input.normalWS), sun.direction));
+                half3 wall = lerp(_WallColor.rgb, _WallLitColor.rgb, facing);
+                // Glass towers glow in their neon color.
+                wall = lerp(wall, neon * _GlassGlow, glass * 0.7);
+                half3 color = roof ? _RoofColor.rgb : wall;
+
+                if (!roof)
                 {
-                    half3 roof = SAMPLE_TEXTURE2D(_RoofTex, sampler_RoofTex, input.positionMeters.xz / _RoofTile).rgb;
-                    color = _RoofColor.rgb * input.tint * roof * lighting;
-                }
-                else
-                {
+                    // Windows come in strips: each floor is cut into runs of a few windows, lit or dark together.
                     float2 cell = floor(grid);
+                    float run = 2.0 + floor(Hash(float3(cell.y, seed * 61.0, 3.0)) * 5.0);
+                    float strip = floor(cell.x / run);
+                    float random = Hash(float3(strip, cell.y, seed * 97.0 + 11.0));
                     float2 inCell = abs(frac(grid) - 0.5);
                     bool window = inCell.x < _WindowFill.x * 0.5 && inCell.y < _WindowFill.y * 0.5;
-                    half3 wall = SAMPLE_TEXTURE2D(_WallTex, sampler_WallTex, float2(grid.x * _CellSize.x, input.positionMeters.y) / _WallTile).rgb;
-                    color = _BaseColor.rgb * input.tint * wall * lighting;
-                    // Small on screen or far away, the window grid becomes its average color.
+                    half3 lit = lerp(_LitColorA.rgb, _LitColorB.rgb, frac(random * 7.3));
+                    lit = lerp(lit, neon * 1.3, glass * 0.6);
+                    half3 near = window ? (random < _LitChance ? lit : _WindowColor.rgb) : wall;
+                    // Small on screen or far away, the windows become their average color.
                     half area = _WindowFill.x * _WindowFill.y;
-                    half3 windowAverage = _WindowColor.rgb * lighting * (1.0 - _LitChance - _FireChance)
-                                        + _LitColor.rgb * _LitChance * 0.8 + _FireColor.rgb * _FireChance;
-                    half3 farColor = lerp(color, windowAverage, area);
+                    half3 average = lerp(wall, lerp(_WindowColor.rgb, (_LitColorA.rgb + _LitColorB.rgb) * 0.5, _LitChance), area);
                     float fade = saturate((input.distance - _DetailFade.x) / max(1.0, _DetailFade.y - _DetailFade.x));
-                    fade = max(fade, 1.0 - detail);
-                    if (window)
-                    {
-                        // The box size makes every building's pattern different without per-object data.
-                        float random = Hash(float3(cell, dot(input.normalOS, float3(1.0, 2.0, 3.0))) + input.scale);
-                        color = _WindowColor.rgb * lighting;
-                        if (random > 1.0 - _FireChance)
-                        {
-                            // Fire glows and breathes slowly instead of blinking.
-                            half flicker = 0.85 + 0.15 * sin(_Time.y * (1.5 + random * 2.0) + random * 40.0);
-                            color = _FireColor.rgb * flicker * 1.6;
-                        }
-                        else if (random < _LitChance)
-                        {
-                            color = _LitColor.rgb * (0.6 + 0.4 * frac(random * 13.7));
-                        }
-                    }
-                    color = lerp(color, farColor, fade);
-                    // Neon signs: short glowing bands across some facades, four windows wide, near a floor's top.
-                    // The band is thin, so it only shows while it is at least a couple of pixels tall.
-                    float2 signCell = float2(floor(grid.x / 4.0), cell.y);
-                    float signRandom = Hash(float3(signCell, 7.0 + dot(input.normalOS, float3(1.0, 2.0, 3.0))) + input.scale);
-                    float inFloor = frac(grid.y);
-                    if (signRandom < _NeonChance && inFloor > 0.84 && inFloor < 0.96)
-                    {
-                        half3 neon = signRandom < _NeonChance * 0.33 ? _NeonA.rgb : (signRandom < _NeonChance * 0.66 ? _NeonB.rgb : _NeonC.rgb);
-                        half neonDetail = saturate((cellPixels.y * 0.12 - 1.0) / 2.0);
-                        color = lerp(color, neon * 1.4, neonDetail);
-                    }
+                    color = lerp(near, average, max(fade, 1.0 - detail));
+
+                    // The street lights wash the lower floors in warm orange and pink.
+                    float above = max(0.0, input.cityPosition.y - _AI_Mist.x);
+                    half3 streetLight = lerp(_NeonD.rgb, _NeonA.rgb, seed);
+                    color += streetLight * _StreetGlow * 0.5 * exp(-above / max(_StreetGlowHeight, 1.0));
                 }
+
+                if (outlined)
+                {
+                    // Antialiased neon line; it fades out when it would be thinner than a pixel.
+                    half stroke = saturate((_EdgeWidth * 0.5 - edge) / edgeStep + 0.5);
+                    stroke *= saturate(_EdgeWidth / edgeStep);
+                    color = lerp(color, neon * 1.5, stroke);
+                }
+
                 color = ApplyCityMist(color, input.cityPosition);
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);

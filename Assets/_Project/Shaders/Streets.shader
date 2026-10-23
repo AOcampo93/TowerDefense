@@ -123,9 +123,10 @@ Shader "AlienInvaders/Streets"
                     lampLine = street < curb + 1.0 ? exp(-abs(street - curb * 0.8) * 2.5) : 0.0;
                 }
 
-                // Blocks: a shade per 30 m patch, with dots of lit windows; streets: dark asphalt.
+                // Blocks: flat color with a barely different shade per 30 m patch (an illustration has no texture),
+                // dots of lit windows; streets: dark asphalt.
                 float2 patch = floor(input.groundMeters / 30.0);
-                half3 color = lerp(_BlockColor.rgb * lerp(0.7, 1.15, Hash(patch)), _StreetColor.rgb, asphalt);
+                half3 color = lerp(_BlockColor.rgb * lerp(0.92, 1.05, Hash(patch)), _StreetColor.rgb, asphalt);
                 // Sodium street lights along the curbs, and their orange wash over the asphalt.
                 half3 glow = _LampColor.rgb * _LampGlow * (0.08 * asphalt + lampLine);
                 // Seen from far away, the lit windows of a block are dots of warm light. Dots smaller than a few pixels

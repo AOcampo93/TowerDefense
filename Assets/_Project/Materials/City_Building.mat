@@ -33,10 +33,15 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _EdgeWidth: 0.6
     - _FireChance: 0.02
+    - _GlassGlow: 0.35
     - _LitChance: 0.35
     - _NeonChance: 0.06
     - _RoofTile: 12
+    - _StreetGlow: 0.5
+    - _StreetGlowHeight: 16
+    - _UVInMeters: 1
     - _UseVertexColor: 1
     - _WallTile: 8
     m_Colors:
@@ -45,10 +50,16 @@ Material:
     - _DetailFade: {r: 300, g: 600, b: 0, a: 0}
     - _FireColor: {r: 1, g: 0.31999996, b: 0.059999965, a: 1}
     - _LitColor: {r: 1, g: 0.75, b: 0.4, a: 1}
+    - _LitColorA: {r: 1, g: 0.86, b: 0.31999996, a: 1}
+    - _LitColorB: {r: 1, g: 0.54999995, b: 0.15999997, a: 1}
     - _NeonA: {r: 1, g: 0.19999996, b: 0.7, a: 1}
     - _NeonB: {r: 0.19999996, g: 0.85, b: 1, a: 1}
     - _NeonC: {r: 0.65, g: 0.29999998, b: 1, a: 1}
+    - _NeonD: {r: 1, g: 0.45, b: 0.14999998, a: 1}
     - _RoofColor: {r: 0.25, g: 0.25, b: 0.3, a: 1}
+    - _Style: {r: 0.1, g: 0.5, b: 1, a: 0}
+    - _WallColor: {r: 0.035, g: 0.035, b: 0.06999998, a: 1}
+    - _WallLitColor: {r: 0.089999996, g: 0.06999998, b: 0.13999996, a: 1}
     - _WindowColor: {r: 0.06, g: 0.08, b: 0.14, a: 1}
     - _WindowFill: {r: 0.55, g: 0.5, b: 0, a: 0}
   m_BuildTextureStacks: []

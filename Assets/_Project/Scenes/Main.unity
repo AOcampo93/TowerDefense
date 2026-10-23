@@ -15,11 +15,11 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 1
-  m_FogColor: {r: 0.6, g: 0.38, b: 0.52, a: 1}
+  m_FogColor: {r: 0.5, g: 0.3, b: 0.48, a: 1}
   m_FogMode: 1
   m_FogDensity: 0.01
-  m_LinearFogStart: 100
-  m_LinearFogEnd: 480
+  m_LinearFogStart: 140
+  m_LinearFogEnd: 650
   m_AmbientSkyColor: {r: 0.32, g: 0.2, b: 0.45, a: 1}
   m_AmbientEquatorColor: {r: 0.45, g: 0.28, b: 0.42, a: 1}
   m_AmbientGroundColor: {r: 0.08, g: 0.07, b: 0.12, a: 1}
@@ -26461,10 +26461,12 @@ MonoBehaviour:
   - {fileID: 4028572892913029417, guid: a0645afa74c6d1c44878fc78ae8211e7, type: 3}
   _detailedRadius: 120
   _detailedScale: {x: 0.8, y: 1.3}
+  _neonChance: 0.45
+  _glassChance: 0.35
   _mistTop: 22
-  _mistStrength: 0.9
+  _mistStrength: 0.75
   _mistWind: 4
-  _mistColor: {r: 0.56, g: 0.36, b: 0.52, a: 1}
+  _mistColor: {r: 0.45, g: 0.28, b: 0.45, a: 1}
   _mistNoise: {fileID: 2800000, guid: f0a352c34727643b8bea6549755b037d, type: 3}
   _buildingMaterial: {fileID: 2100000, guid: 8d062d0512f6b4c45a4117cdf520975d, type: 2}
   _neighborMaterial: {fileID: 2100000, guid: f911c0abb5be1417b8aa58ae7d729e57, type: 2}

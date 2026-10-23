@@ -10,6 +10,9 @@ namespace AlienInvaders.Views
     /// districts, each district has its own street grid turned at its own angle, and the blocks are rectangles of
     /// irregular sizes split into lots of different widths. The streets are also painted into a map texture that the
     /// ground shader uses, so the asphalt and its orange street lights always match the buildings.
+    /// The city is drawn like a flat night illustration (Building and Streets shaders): each building gets its own
+    /// style (neon color, neon outline, glass tower) packed in its vertex color, and each face carries its size in
+    /// meters in its UVs for the windows and outlines.
     /// Buildings come in three sizes: small ones everywhere, medium ones scattered, and a few tall ones. The player's
     /// tower always stays the tallest by a wide margin (no other building comes within 100 m of its top). Close to the
     /// tower, where the player looks straight down, lots can get modeled buildings (optional prefabs) fitted to their
@@ -27,6 +30,7 @@ namespace AlienInvaders.Views
         private static readonly int MistId = Shader.PropertyToID("_AI_Mist");
         private static readonly int MistColorId = Shader.PropertyToID("_AI_MistColor");
         private static readonly int MistNoiseId = Shader.PropertyToID("_AI_MistNoise");
+        private static readonly int StyleId = Shader.PropertyToID("_Style");
 
         [Tooltip("Parent of everything generated (inside the leaning part of the world).")]
         [SerializeField] private Transform _root;
@@ -91,6 +95,12 @@ namespace AlienInvaders.Views
         [Tooltip("How much a model may be scaled to fit its lot.")]
         [SerializeField] private Vector2 _detailedScale = new Vector2(0.8f, 1.3f);
 
+        [Header("Illustrated style")]
+        [Tooltip("Share of buildings with a neon outline.")]
+        [SerializeField] private float _neonChance = 0.45f;
+        [Tooltip("Share of the medium and tall buildings drawn as glass towers glowing in their neon color.")]
+        [SerializeField] private float _glassChance = 0.35f;
+
         [Header("Mist between the buildings")]
         [Tooltip("Height of the mist over the street (meters), about as high as the small buildings.")]
         [SerializeField] private float _mistTop = 22f;
@@ -113,6 +123,9 @@ namespace AlienInvaders.Views
             public readonly List<Vector3> Vertices = new List<Vector3>();
             public readonly List<Vector3> Normals = new List<Vector3>();
             public readonly List<Color> Colors = new List<Color>();
+            // Meters across each face (along the wall, up from its base) and the face's size, for windows and outlines.
+            public readonly List<Vector2> FaceMeters = new List<Vector2>();
+            public readonly List<Vector2> FaceSizes = new List<Vector2>();
             public readonly List<int> Triangles = new List<int>();
         }
 
@@ -140,18 +153,6 @@ namespace AlienInvaders.Views
             public Vector2 Half;
             public float Angle;
         }
-
-        // Facade tints picked per building (the shader multiplies the dark concrete by them): night city blues,
-        // violets and charcoal, like the cyberpunk reference images.
-        private static readonly Color[] Palette =
-        {
-            new Color(0.55f, 0.58f, 0.68f),
-            new Color(0.5f, 0.46f, 0.6f),
-            new Color(0.42f, 0.44f, 0.5f),
-            new Color(0.62f, 0.6f, 0.66f),
-            new Color(0.45f, 0.5f, 0.62f),
-            new Color(0.6f, 0.52f, 0.5f)
-        };
 
         private readonly List<Renderer> _beacons = new List<Renderer>();
         private readonly List<Vector3> _roofs = new List<Vector3>();
@@ -229,8 +230,7 @@ namespace AlienInvaders.Views
 
                 var chunk = new Vector2Int(Mathf.FloorToInt(lot.Center.x / _chunkSize), Mathf.FloorToInt(lot.Center.y / _chunkSize));
                 float roofY = _groundTop + BuildingHeight(lot);
-                Color tint = Palette[_random.Next(Palette.Length)] * Lerp(0.9f, 1.05f, Next());
-                AddOrientedBox(Buffer(chunks, chunk), lot, _groundTop, roofY, tint);
+                AddOrientedBox(Buffer(chunks, chunk), lot, _groundTop, roofY, BuildingStyle(roofY - _groundTop));
                 _roofs.Add(new Vector3(lot.Center.x, roofY, lot.Center.y));
                 if (lot.Center.magnitude < _roofDetailRadius)
                 {
@@ -491,6 +491,17 @@ namespace AlienInvaders.Views
             return picked;
         }
 
+        // Style of one building for the shader, packed in a color: r = neon color, g = random seed, b = neon outline
+        // (0 or 1), a = glass tower (0 or 1). Only taller buildings may be glass towers.
+        private Color BuildingStyle(float height)
+        {
+            float neon = Next();
+            float seed = Next();
+            float outline = Next() < _neonChance ? 1f : 0f;
+            float glass = height >= _mediumHeight.x && Next() < _glassChance ? 1f : 0f;
+            return new Color(neon, seed, outline, glass);
+        }
+
         // Three sizes: mostly small buildings, medium ones scattered, a few tall ones. Narrow lots stay small (a
         // 100 m pencil would look wrong).
         private float BuildingHeight(Lot lot)
@@ -543,7 +554,14 @@ namespace AlienInvaders.Views
             tower.transform.localPosition = new Vector3(lot.Center.x, _groundTop + height * 0.5f, lot.Center.y);
             tower.transform.localRotation = turn;
             tower.transform.localScale = new Vector3(lot.Half.x * 2f, height, lot.Half.y * 2f);
-            SetupRenderer(tower.GetComponent<MeshRenderer>(), _neighborMaterial);
+            MeshRenderer towerRenderer = tower.GetComponent<MeshRenderer>();
+            SetupRenderer(towerRenderer, _neighborMaterial);
+            // A plain cube has no style in its vertex colors, so each skyscraper gets its own through a property block.
+            Color style = BuildingStyle(height);
+            style.b = 1f;
+            var block = new MaterialPropertyBlock();
+            block.SetVector(StyleId, style);
+            towerRenderer.SetPropertyBlock(block);
 
             // Antenna with a red warning light on top.
             var antenna = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -708,6 +726,8 @@ namespace AlienInvaders.Views
             mesh.SetVertices(buffer.Vertices);
             mesh.SetNormals(buffer.Normals);
             mesh.SetColors(buffer.Colors);
+            mesh.SetUVs(0, buffer.FaceMeters);
+            mesh.SetUVs(1, buffer.FaceSizes);
             mesh.SetTriangles(buffer.Triangles, 0);
             mesh.RecalculateBounds();
 
@@ -726,7 +746,7 @@ namespace AlienInvaders.Views
 
         // A box turned around the vertical axis, without its bottom face (never seen). Faces are listed clockwise
         // as seen from outside; turning the whole box keeps that order.
-        private static void AddOrientedBox(MeshBuffer buffer, Lot lot, float yMin, float yMax, Color color)
+        private static void AddOrientedBox(MeshBuffer buffer, Lot lot, float yMin, float yMax, Color style)
         {
             int first = buffer.Vertices.Count;
             Quaternion turn = Quaternion.Euler(0f, lot.Angle, 0f);
@@ -735,27 +755,37 @@ namespace AlienInvaders.Views
             float hx = lot.Half.x;
             float hz = lot.Half.y;
 
-            AddQuad(buffer, Vector3.up, P(-hx, yMax, -hz), P(-hx, yMax, hz), P(hx, yMax, hz), P(hx, yMax, -hz));
-            AddQuad(buffer, turn * Vector3.forward, P(hx, yMin, hz), P(hx, yMax, hz), P(-hx, yMax, hz), P(-hx, yMin, hz));
-            AddQuad(buffer, turn * Vector3.back, P(-hx, yMin, -hz), P(-hx, yMax, -hz), P(hx, yMax, -hz), P(hx, yMin, -hz));
-            AddQuad(buffer, turn * Vector3.right, P(hx, yMin, -hz), P(hx, yMax, -hz), P(hx, yMax, hz), P(hx, yMin, hz));
-            AddQuad(buffer, turn * Vector3.left, P(-hx, yMin, hz), P(-hx, yMax, hz), P(-hx, yMax, -hz), P(-hx, yMin, -hz));
+            float height = yMax - yMin;
+            AddQuad(buffer, Vector3.up, P(-hx, yMax, -hz), P(-hx, yMax, hz), P(hx, yMax, hz), P(hx, yMax, -hz), hx * 2f, hz * 2f);
+            AddQuad(buffer, turn * Vector3.forward, P(hx, yMin, hz), P(hx, yMax, hz), P(-hx, yMax, hz), P(-hx, yMin, hz), hx * 2f, height);
+            AddQuad(buffer, turn * Vector3.back, P(-hx, yMin, -hz), P(-hx, yMax, -hz), P(hx, yMax, -hz), P(hx, yMin, -hz), hx * 2f, height);
+            AddQuad(buffer, turn * Vector3.right, P(hx, yMin, -hz), P(hx, yMax, -hz), P(hx, yMax, hz), P(hx, yMin, hz), hz * 2f, height);
+            AddQuad(buffer, turn * Vector3.left, P(-hx, yMin, hz), P(-hx, yMax, hz), P(-hx, yMax, -hz), P(-hx, yMin, -hz), hz * 2f, height);
             for (int i = first; i < buffer.Vertices.Count; i++)
             {
-                buffer.Colors.Add(color);
+                buffer.Colors.Add(style);
             }
         }
 
-        private static void AddQuad(MeshBuffer buffer, Vector3 normal, Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        // A face from a (start, bottom) through b (start, top), c (end, top) and d (end, bottom); width and height in
+        // meters go into its UVs.
+        private static void AddQuad(MeshBuffer buffer, Vector3 normal, Vector3 a, Vector3 b, Vector3 c, Vector3 d,
+            float width, float height)
         {
             int start = buffer.Vertices.Count;
             buffer.Vertices.Add(a);
             buffer.Vertices.Add(b);
             buffer.Vertices.Add(c);
             buffer.Vertices.Add(d);
+            buffer.FaceMeters.Add(new Vector2(0f, 0f));
+            buffer.FaceMeters.Add(new Vector2(0f, height));
+            buffer.FaceMeters.Add(new Vector2(width, height));
+            buffer.FaceMeters.Add(new Vector2(width, 0f));
+            var size = new Vector2(width, height);
             for (int i = 0; i < 4; i++)
             {
                 buffer.Normals.Add(normal);
+                buffer.FaceSizes.Add(size);
             }
             buffer.Triangles.Add(start);
             buffer.Triangles.Add(start + 1);
