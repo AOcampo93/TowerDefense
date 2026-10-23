@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 namespace AlienInvaders.Core
 {
@@ -30,6 +31,18 @@ namespace AlienInvaders.Core
         public float AzimuthDegrees;
         public float ElevationDegrees;
         public float Distance;
+
+        /// <summary>Position in tower space (X = East, Y = Up, Z = North), measured from the player's platform.</summary>
+        public Vector3 ToPosition()
+        {
+            double azimuth = AzimuthDegrees * Math.PI / 180.0;
+            double elevation = ElevationDegrees * Math.PI / 180.0;
+            float horizontal = (float)(Distance * Math.Cos(elevation));
+            return new Vector3(
+                (float)Math.Sin(azimuth) * horizontal,
+                (float)(Distance * Math.Sin(elevation)),
+                (float)Math.Cos(azimuth) * horizontal);
+        }
     }
 
     /// <summary>

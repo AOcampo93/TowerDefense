@@ -12381,6 +12381,7 @@ GameObject:
   - component: {fileID: 1908683094}
   - component: {fileID: 1908683097}
   - component: {fileID: 1908683096}
+  - component: {fileID: 1908683098}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -12418,6 +12419,8 @@ MonoBehaviour:
   _calibration: {fileID: 1908683092}
   _passthrough: {fileID: 1908683093}
   _elevator: {fileID: 1713141281}
+  _ships: {fileID: 1908683094}
+  _portals: {fileID: 1908683098}
   _motionOutputs:
   - {fileID: 2070411498}
   - {fileID: 1908683097}
@@ -12470,8 +12473,8 @@ MonoBehaviour:
   _fighterPrefab: {fileID: 1665761235359433715, guid: 54fd787bcc13f4e828436859f0b06091, type: 3}
   _bomberPrefab: {fileID: 7475921335747704945, guid: 31a89c5e9dbb446c88318d3d2b601e1a, type: 3}
   _explosions: {fileID: 1908683095}
-  _prewarmFighters: 24
-  _prewarmBombers: 8
+  _prewarmFighters: 40
+  _prewarmBombers: 16
   _fighterExplosionSize: 6
   _bomberExplosionSize: 9
   _impactExplosionSize: 2
@@ -12525,6 +12528,22 @@ MonoBehaviour:
   _heartbeatInterval: 0.6
   _heartbeatGain: 3
   _heartbeatSeconds: 0.15
+--- !u!114 &1908683098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908683089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22127e1fec93d4913a9faa95739ff1a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Game.PortalSpawner
+  _game: {fileID: 1908683091}
+  _ships: {fileID: 1908683094}
+  _portalPrefab: {fileID: 8677555645987719941, guid: fe64fb66184f94f1095c7715e8c002b2, type: 3}
+  _portalsRoot: {fileID: 1559194469}
 --- !u!1 &1910339460
 GameObject:
   m_ObjectHideFlags: 0

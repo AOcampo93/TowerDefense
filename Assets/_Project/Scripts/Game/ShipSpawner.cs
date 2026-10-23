@@ -22,8 +22,8 @@ namespace AlienInvaders.Game
         [SerializeField] private ShipController _fighterPrefab;
         [SerializeField] private ShipController _bomberPrefab;
         [SerializeField] private ExplosionPool _explosions;
-        [SerializeField] private int _prewarmFighters = 24;
-        [SerializeField] private int _prewarmBombers = 8;
+        [SerializeField] private int _prewarmFighters = 40;
+        [SerializeField] private int _prewarmBombers = 16;
 
         [Header("Explosions (meters)")]
         [SerializeField] private float _fighterExplosionSize = 6f;

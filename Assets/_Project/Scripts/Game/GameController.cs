@@ -19,6 +19,8 @@ namespace AlienInvaders.Game
         [SerializeField] private PlatformCalibration _calibration;
         [SerializeField] private PassthroughFader _passthrough;
         [SerializeField] private ElevatorView _elevator;
+        [SerializeField] private ShipSpawner _ships;
+        [SerializeField] private PortalSpawner _portals;
         [Tooltip("Components that implement IMotionOutput (camera, haptics, future platform). Disabled ones are skipped.")]
         [SerializeField] private MonoBehaviour[] _motionOutputs;
 
@@ -55,6 +57,10 @@ namespace AlienInvaders.Game
             Records = new HighScoreTable(
                 Path.Combine(Application.persistentDataPath, "records.json"), new JsonUtilityRecordSerializer());
             Records.Load();
+
+            // The wave rhythm drives the fight states: calm and portals = Respite, ships attacking = Defense.
+            WaveCycle.OnAttackStarted += HandleAttackStarted;
+            WaveCycle.OnWaveCleared += HandleWaveCleared;
 
             // Unity cannot show interface fields in the inspector, so outputs are plain components checked here.
             foreach (MonoBehaviour behaviour in _motionOutputs)
@@ -104,6 +110,7 @@ namespace AlienInvaders.Game
                     break;
 
                 case GameState.Ascent:
+                    ResetMatch();
                     StartCoroutine(AscentRoutine());
                     break;
 
@@ -114,10 +121,10 @@ namespace AlienInvaders.Game
                     break;
 
                 case GameState.Defense:
-                    // The weapon arms itself in this state (WeaponController); the waves start here in a later phase.
+                case GameState.Respite:
+                    // Fight states: the WaveCycle (ticked in Update) switches between them; the weapon arms itself.
                     break;
 
-                case GameState.Respite:
                 case GameState.Critical:
                 case GameState.Rescue:
                 case GameState.Results:
@@ -135,6 +142,9 @@ namespace AlienInvaders.Game
                 return;
             }
 
+            WaveCycle.Tick(Time.deltaTime, _portals.ShipsLeft);
+            Score.Tick(Time.deltaTime);
+
             // The motion model runs every frame (smooth tilt and drops); outputs get a sample 20 times per second,
             // the rate a physical platform and the recording use.
             MotionSample sample = TowerMotion.Tick(Time.deltaTime);
@@ -145,6 +155,36 @@ namespace AlienInvaders.Game
                 _motionTimer %= interval;
                 Motion.Publish(sample);
             }
+        }
+
+        private void HandleAttackStarted(WaveConfig wave)
+        {
+            if (State == GameState.Respite)
+            {
+                EnterState(GameState.Defense);
+            }
+        }
+
+        private void HandleWaveCleared(WaveConfig wave)
+        {
+            if (State == GameState.Defense)
+            {
+                EnterState(GameState.Respite);
+            }
+        }
+
+        /// <summary>Puts every system back to the start, so "Play again" begins a clean match.</summary>
+        private void ResetMatch()
+        {
+            Tower.Reset();
+            TowerMotion.Reset();
+            Weapon.Reset();
+            Score.Reset();
+            WaveCycle.Reset();
+            _ships.ClearAll();
+            _portals.StopAll();
+            Motion.ResetAll();
+            _motionTimer = 0f;
         }
 
         private void HandleCalibrated()
@@ -168,7 +208,8 @@ namespace AlienInvaders.Game
         {
             yield return _elevator.Open(Balance.ArrivalSeconds);
             _elevator.Hide();
-            EnterState(GameState.Defense);
+            // The first wave starts like every other one: a few calm seconds, then the portals open.
+            EnterState(GameState.Respite);
         }
     }
 }

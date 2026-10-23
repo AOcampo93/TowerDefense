@@ -37,6 +37,18 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void PortalPlacement_ConvertsToPosition()
+        {
+            var east = new PortalPlacement { AzimuthDegrees = 90f, ElevationDegrees = 0f, Distance = 40f };
+            Assert.AreEqual(40f, east.ToPosition().X, 0.001f);
+            Assert.AreEqual(0f, east.ToPosition().Z, 0.001f);
+
+            var high = new PortalPlacement { AzimuthDegrees = 0f, ElevationDegrees = 30f, Distance = 40f };
+            Assert.AreEqual(20f, high.ToPosition().Y, 0.001f);
+            Assert.AreEqual(40f, high.ToPosition().Length(), 0.001f);
+        }
+
+        [Test]
         public void ShipTypes_CountMatchesWave()
         {
             WaveConfig wave = WaveGenerator.Build(6, 99);
