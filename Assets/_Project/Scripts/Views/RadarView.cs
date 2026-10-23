@@ -5,11 +5,12 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// Tactical watch on the left wrist (diegetic radar, no HUD). It is a small disc that turns towards the eyes, with
-    /// the player in the middle and "where I am looking" always at the top: red blips are ships (blinking while they
-    /// aim at the tower), purple blips are portals (pulsing, also while they open). Ships beyond the range stick to
-    /// the edge, so threats behind the player are never invisible. A ring around the dial shows the tower's integrity
-    /// (green, yellow, red, blinking when critical), so the player's only "life" is on the wrist too.
+    /// Tactical watch on the left wrist (diegetic radar, no HUD). WristMount wears it on the back of the wrist like a
+    /// real watch; the dial shows the player in the middle and "where I am looking" always at 12 o'clock: red blips
+    /// are ships (blinking while they aim at the tower), purple blips are portals (pulsing, also while they open).
+    /// Ships beyond the range stick to the edge, so threats behind the player are never invisible. A ring around the
+    /// dial shows the tower's integrity (green, yellow, red, blinking when critical), so the player's only "life" is
+    /// on the wrist too.
     /// </summary>
     public class RadarView : MonoBehaviour
     {
@@ -22,6 +23,8 @@ namespace AlienInvaders.Views
         [SerializeField] private GameObject _display;
         [Tooltip("Disc that holds the blips; local +Y is 'ahead'.")]
         [SerializeField] private Transform _face;
+        [Tooltip("Turn the dial towards the eyes every frame (off: it lies on the wrist like a real watch).")]
+        [SerializeField] private bool _faceTheEyes;
         [SerializeField] private Transform _shipBlipPrefab;
         [SerializeField] private Transform _portalBlipPrefab;
 
@@ -95,8 +98,22 @@ namespace AlienInvaders.Views
                 return;
             }
 
-            // Face the eyes, keeping the head's "up" so the top of the disc is always straight ahead.
-            _face.rotation = Quaternion.LookRotation(_face.position - _head.position, _head.up);
+            if (_faceTheEyes)
+            {
+                // Face the eyes, keeping the head's "up" so the top of the disc is always straight ahead.
+                _face.rotation = Quaternion.LookRotation(_face.position - _head.position, _head.up);
+            }
+            else
+            {
+                // The dial lies flat on the wrist, but its picture turns like a phone screen so "ahead" is always at
+                // the top as the player reads it, however the wrist is turned.
+                Vector3 intoWrist = _display.transform.forward;
+                Vector3 top = Vector3.ProjectOnPlane(_head.up, intoWrist);
+                if (top.sqrMagnitude > 0.0001f)
+                {
+                    _face.rotation = Quaternion.LookRotation(intoWrist, top);
+                }
+            }
 
             // Everything is drawn relative to where the player looks (only the heading counts, not looking down).
             Vector3 forward = _head.forward;

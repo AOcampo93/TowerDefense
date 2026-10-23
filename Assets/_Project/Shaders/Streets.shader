@@ -1,7 +1,7 @@
-// Ground of the city seen from far above: city blocks separated by darker streets with faint lane marks. Each block
-// gets its own brightness and a darker inner roof, so beyond the 3D buildings the ground still reads as dense city
-// all the way into the haze. The grid is drawn in the object's own space in meters, so it is glued to the ground
-// while the city leans. A regular street grid is a strong depth cue: the player can judge how far down it is.
+// Ground of the city seen from far above. Inside the city the streets come from the street map painted by
+// CityGenerator (red = asphalt, green = the glow of the street lights), so they match the buildings, diagonal
+// avenues included; beyond the map a plain grid takes over, deep in the haze. Blocks get their own shade and dots of
+// lit windows. Everything is in the ground's own meters, so it stays glued to the ground while the city leans.
 Shader "AlienInvaders/Streets"
 {
     Properties
@@ -34,6 +34,11 @@ Shader "AlienInvaders/Streets"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
+            // Set by CityGenerator once the streets are laid out.
+            TEXTURE2D(_AI_CityMap);
+            SAMPLER(sampler_AI_CityMap);
+            float _AI_CityMapHalf;
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _BlockColor;
@@ -96,23 +101,31 @@ Shader "AlienInvaders/Streets"
                 float2 fromStreet = _BlockSize * 0.5 - local;
                 float street = min(fromStreet.x, fromStreet.y);
 
-                half3 color = _StreetColor.rgb;
-                half3 glow = 0;
-                float curb = _StreetWidth * 0.5;
-                if (street < curb + 1.0)
+                // Asphalt and street light glow: from the street map inside the city, from a plain grid beyond it.
+                float2 mapUV = input.groundMeters / (2.0 * max(_AI_CityMapHalf, 1.0)) + 0.5;
+                bool onMap = _AI_CityMapHalf > 0.0 && all(mapUV > 0.0) && all(mapUV < 1.0);
+                half asphalt;
+                half lampLine;
+                if (onMap)
                 {
-                    // Sodium street lights along both curbs, and their orange wash over the asphalt.
-                    float lampLine = exp(-abs(street - curb * 0.8) * 2.5);
-                    glow = _LampColor.rgb * _LampGlow * (0.08 + lampLine);
+                    half2 map = SAMPLE_TEXTURE2D(_AI_CityMap, sampler_AI_CityMap, mapUV).rg;
+                    asphalt = map.r;
+                    lampLine = map.g;
                 }
-                if (street >= _StreetWidth * 0.5)
+                else
                 {
-                    // A block: its own shade, with a darker "roof" inset a few meters from the sidewalk.
-                    float2 block = floor(input.groundMeters / _BlockSize);
-                    float shade = lerp(0.7, 1.15, Hash(block));
-                    bool roof = street > _StreetWidth * 0.5 + 4.0;
-                    color = _BlockColor.rgb * shade * (roof ? lerp(0.6, 0.85, Hash(block + 17.0)) : 1.0);
+                    float curb = _StreetWidth * 0.5;
+                    asphalt = street < curb ? 1.0 : 0.0;
+                    lampLine = street < curb + 1.0 ? exp(-abs(street - curb * 0.8) * 2.5) : 0.0;
+                }
 
+                // Blocks: a shade per 30 m patch, with dots of lit windows; streets: dark asphalt.
+                float2 patch = floor(input.groundMeters / 30.0);
+                half3 color = lerp(_BlockColor.rgb * lerp(0.7, 1.15, Hash(patch)), _StreetColor.rgb, asphalt);
+                // Sodium street lights along the curbs, and their orange wash over the asphalt.
+                half3 glow = _LampColor.rgb * _LampGlow * (0.08 * asphalt + lampLine);
+                if (asphalt < 0.1)
+                {
                     // Seen from far away, the lit windows of a block are dots of warm light.
                     float2 dotCell = floor(input.groundMeters / 4.0);
                     float2 inDot = frac(input.groundMeters / 4.0);
@@ -121,11 +134,11 @@ Shader "AlienInvaders/Streets"
                         glow = _DotColor.rgb * 0.9;
                     }
                 }
-                // Dashed lane mark in the middle of each street.
+                // Dashed lane marks, only on the plain grid beyond the map (the map has its own street layout).
                 float2 dashes = frac(input.groundMeters / 6.0);
                 bool laneX = fromStreet.x < 0.25 && dashes.y < 0.5;
                 bool laneY = fromStreet.y < 0.25 && dashes.x < 0.5;
-                if (laneX || laneY)
+                if (!onMap && (laneX || laneY))
                 {
                     color = _LineColor.rgb;
                 }

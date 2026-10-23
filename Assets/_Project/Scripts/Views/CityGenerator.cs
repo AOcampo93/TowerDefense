@@ -6,32 +6,48 @@ namespace AlienInvaders.Views
 {
     /// <summary>
     /// Builds the city 200 m below the player when the game loads, from a fixed seed (same city every time).
-    /// Vertigo comes from what the eye can measure: a dark city of lit windows shrinking into the haze, a few tall
-    /// towers spread around whose facades fall all the way to the street, and rooftop details close enough to show
-    /// the scale. The player's tower always stays the tallest by a wide margin (no other building comes within 100 m
-    /// of its top). Buildings follow the street grid of the ground (blocks of 40 m) and are merged into a few big
-    /// meshes so the headset draws the whole city in a few dozen calls.
+    /// The layout tries to look like a real city instead of a chess board: two diagonal avenues cut it into four
+    /// districts, each district has its own street grid turned at its own angle, and the blocks are rectangles of
+    /// irregular sizes split into lots of different widths. The streets are also painted into a map texture that the
+    /// ground shader uses, so the asphalt and its orange street lights always match the buildings.
+    /// The player's tower always stays the tallest by a wide margin (no other building comes within 100 m of its top).
+    /// Buildings are merged into a few big meshes so the headset draws the whole city in a few dozen calls.
     /// It lives on an object that is active from the start, so the city is built while the game loads and not in
     /// the middle of the elevator ride (the city's own root stays hidden until VR).
     /// </summary>
     public class CityGenerator : MonoBehaviour
     {
+        private static readonly int CityMapId = Shader.PropertyToID("_AI_CityMap");
+        private static readonly int CityMapHalfId = Shader.PropertyToID("_AI_CityMapHalf");
+
         [Tooltip("Parent of everything generated (inside the leaning part of the world).")]
         [SerializeField] private Transform _root;
 
         [Header("Layout (meters, relative to the player platform)")]
         [SerializeField] private int _seed = 2026;
         [SerializeField] private float _groundTop = -200f;
-        [Tooltip("Must match the street grid of the ground material.")]
-        [SerializeField] private float _blockSize = 40f;
-        [SerializeField] private float _streetWidth = 9f;
-        [SerializeField] private float _sidewalk = 2f;
         [SerializeField] private float _cityRadius = 700f;
         [Tooltip("No regular buildings this close to the tower axis (a small plaza around its base).")]
         [SerializeField] private float _plazaRadius = 15f;
-        [SerializeField] private float _emptyBlockChance = 0.12f;
-        [Tooltip("Blocks per side of each merged mesh. Bigger chunks = fewer draw calls, coarser culling.")]
-        [SerializeField] private int _chunkBlocks = 6;
+        [SerializeField] private float _emptyBlockChance = 0.1f;
+        [Tooltip("Size of the square areas merged into one mesh. Bigger = fewer draw calls, coarser culling.")]
+        [SerializeField] private float _chunkSize = 240f;
+
+        [Header("Districts and streets")]
+        [Tooltip("Grid angle of each of the four districts between the two diagonal avenues (degrees).")]
+        [SerializeField] private float[] _districtAngles = { 0f, 17f, -23f, 36f };
+        [Tooltip("Length and depth range of the rectangular blocks.")]
+        [SerializeField] private Vector2 _blockLength = new Vector2(55f, 130f);
+        [SerializeField] private Vector2 _blockDepth = new Vector2(28f, 62f);
+        [SerializeField] private float _streetWidth = 8f;
+        [SerializeField] private float _wideStreetWidth = 13f;
+        [SerializeField] private float _wideStreetChance = 0.25f;
+        [SerializeField] private float _avenueWidth = 18f;
+        [SerializeField] private float _sidewalk = 2f;
+        [Tooltip("Pixels per side of the street map painted for the ground shader.")]
+        [SerializeField] private int _mapResolution = 1536;
+        [Tooltip("The map covers this many meters on each side of the tower.")]
+        [SerializeField] private float _mapHalfSize = 800f;
 
         [Header("Heights")]
         [Tooltip("No building may come closer than this to the top of the player's tower.")]
@@ -42,12 +58,11 @@ namespace AlienInvaders.Views
         [SerializeField] private float _tallChance = 0.07f;
         [SerializeField] private Vector2 _tallHeight = new Vector2(60f, 100f);
 
-        [Header("Skyscrapers next to the tower")]
+        [Header("Skyscrapers near the tower")]
         [SerializeField] private int _neighborTowers = 6;
         [SerializeField] private Vector2 _neighborDistance = new Vector2(60f, 260f);
         [Tooltip("Height of their roofs relative to the player (never above the clearance below the tower top).")]
         [SerializeField] private Vector2 _neighborRoof = new Vector2(-115f, -100f);
-        [SerializeField] private Vector2 _neighborWidth = new Vector2(14f, 20f);
         [SerializeField] private float _beaconBlinkSeconds = 1.2f;
 
         [Header("Details")]
@@ -72,6 +87,31 @@ namespace AlienInvaders.Views
             public readonly List<int> Triangles = new List<int>();
         }
 
+        // A straight avenue across the whole city: the points p where dot(Normal, p - Point) = 0.
+        private struct Avenue
+        {
+            public Vector2 Point;
+            public Vector2 Normal;
+        }
+
+        // One district: a street grid turned by Angle. Lines are street center lines in the district's own frame.
+        private class District
+        {
+            public float Angle;
+            public readonly List<float> XLines = new List<float>();
+            public readonly List<float> XWidths = new List<float>();
+            public readonly List<float> ZLines = new List<float>();
+            public readonly List<float> ZWidths = new List<float>();
+        }
+
+        // A building footprint: a rectangle turned by Angle around its Center (top view, meters).
+        private struct Lot
+        {
+            public Vector2 Center;
+            public Vector2 Half;
+            public float Angle;
+        }
+
         // Facade tints picked per building (the shader multiplies the dark concrete by them): night city blues,
         // violets and charcoal, like the cyberpunk reference images.
         private static readonly Color[] Palette =
@@ -85,6 +125,8 @@ namespace AlienInvaders.Views
         };
 
         private readonly List<Renderer> _beacons = new List<Renderer>();
+        private readonly Avenue[] _avenues = new Avenue[2];
+        private readonly District[] _districts = new District[4];
         private System.Random _random;
         private float _beaconTimer;
 
@@ -107,29 +149,34 @@ namespace AlienInvaders.Views
             }
         }
 
-        /// <summary>Creates every building, the neighbor skyscrapers and the smoke columns.</summary>
+        /// <summary>Lays out the streets, then creates the buildings, the skyscrapers, the smoke and the street map.</summary>
         public void Generate()
         {
             _random = new System.Random(_seed);
-            var neighbors = PlaceNeighborTowers();
+            PlanStreets();
+            List<Lot> lots = PlanLots();
+            HashSet<int> skyscrapers = PickSkyscrapers(lots);
+
             var chunks = new Dictionary<Vector2Int, MeshBuffer>();
             var roofChunks = new Dictionary<Vector2Int, MeshBuffer>();
             var roofs = new List<Vector3>();
-
-            int blocks = Mathf.CeilToInt(_cityRadius / _blockSize);
-            for (int bx = -blocks; bx < blocks; bx++)
+            for (int i = 0; i < lots.Count; i++)
             {
-                for (int bz = -blocks; bz < blocks; bz++)
+                Lot lot = lots[i];
+                if (skyscrapers.Contains(i))
                 {
-                    // Streets run along multiples of the block size, so the tower stands on a crossing.
-                    var blockMin = new Vector2(bx * _blockSize, bz * _blockSize);
-                    Vector2 center = blockMin + Vector2.one * (_blockSize * 0.5f);
-                    if (center.magnitude > _cityRadius || Next() < _emptyBlockChance)
-                    {
-                        continue;
-                    }
-                    var chunk = new Vector2Int(Mathf.FloorToInt((float)bx / _chunkBlocks), Mathf.FloorToInt((float)bz / _chunkBlocks));
-                    FillBlock(blockMin, neighbors, Buffer(chunks, chunk), Buffer(roofChunks, chunk), roofs);
+                    CreateSkyscraper(lot);
+                    continue;
+                }
+
+                var chunk = new Vector2Int(Mathf.FloorToInt(lot.Center.x / _chunkSize), Mathf.FloorToInt(lot.Center.y / _chunkSize));
+                float roofY = _groundTop + BuildingHeight();
+                Color tint = Palette[_random.Next(Palette.Length)] * Lerp(0.9f, 1.05f, Next());
+                AddOrientedBox(Buffer(chunks, chunk), lot, _groundTop, roofY, tint);
+                roofs.Add(new Vector3(lot.Center.x, roofY, lot.Center.y));
+                if (lot.Center.magnitude < _roofDetailRadius)
+                {
+                    AddRoofDetails(Buffer(roofChunks, chunk), lot, roofY);
                 }
             }
 
@@ -144,49 +191,174 @@ namespace AlienInvaders.Views
                     CreateMeshObject($"Rooftops_{pair.Key.x}_{pair.Key.y}", pair.Value, _roofDetailMaterial);
                 }
             }
-            foreach (Rect footprint in neighbors)
-            {
-                CreateNeighborTower(footprint);
-            }
             PlaceSmoke(roofs);
+            PaintStreetMap();
         }
 
-        // Uses a block for one big building or splits it into 2 x 2 lots, one building on each.
-        private void FillBlock(Vector2 blockMin, List<Rect> neighbors, MeshBuffer buildings, MeshBuffer details, List<Vector3> roofs)
+        // ---------------------------------------------------------------- streets
+
+        // Two diagonal avenues through the middle of the city, and an irregular grid for each of the four districts.
+        private void PlanStreets()
         {
-            float margin = _streetWidth * 0.5f + _sidewalk;
-            float inner = _blockSize - margin * 2f;
-            int split = Next() < 0.45 ? 1 : 2;
-            float lot = inner / split;
-
-            for (int i = 0; i < split; i++)
+            float first = Lerp(25f, 40f, Next());
+            float[] angles = { first, first + Lerp(70f, 110f, Next()) };
+            for (int i = 0; i < 2; i++)
             {
-                for (int j = 0; j < split; j++)
+                float radians = angles[i] * Mathf.Deg2Rad;
+                _avenues[i] = new Avenue
                 {
-                    float gap = Lerp(0.6f, 2.5f, Next());
-                    float width = (lot - gap) * Lerp(0.6f, 0.92f, Next());
-                    float depth = (lot - gap) * Lerp(0.6f, 0.92f, Next());
-                    var lotMin = new Vector2(blockMin.x + margin + i * lot, blockMin.y + margin + j * lot);
-                    var footprint = new Rect(lotMin.x + (lot - width) * 0.5f, lotMin.y + (lot - depth) * 0.5f, width, depth);
-                    float distance = footprint.center.magnitude;
-                    if (distance < _plazaRadius || Overlaps(footprint, neighbors))
-                    {
-                        continue;
-                    }
+                    Point = new Vector2(Lerp(-80f, 80f, Next()), Lerp(-80f, 80f, Next())),
+                    Normal = new Vector2(-Mathf.Sin(radians), Mathf.Cos(radians))
+                };
+            }
 
-                    float height = BuildingHeight();
-                    var min = new Vector3(footprint.xMin, _groundTop, footprint.yMin);
-                    var max = new Vector3(footprint.xMax, _groundTop + height, footprint.yMax);
-                    Color tint = Palette[_random.Next(Palette.Length)] * Lerp(0.9f, 1.05f, Next());
-                    AddBox(buildings, min, max, tint);
-                    roofs.Add(new Vector3(footprint.center.x, max.y, footprint.center.y));
+            float extent = _mapHalfSize * 1.5f;
+            for (int d = 0; d < _districts.Length; d++)
+            {
+                var district = new District { Angle = _districtAngles[d % _districtAngles.Length] };
+                FillLines(district.XLines, district.XWidths, extent, _blockLength);
+                FillLines(district.ZLines, district.ZWidths, extent, _blockDepth);
+                _districts[d] = district;
+            }
+        }
 
-                    if (distance < _roofDetailRadius)
+        // Street center lines from -extent to +extent with irregular gaps; some streets are wider than others.
+        private void FillLines(List<float> lines, List<float> widths, float extent, Vector2 gap)
+        {
+            float position = -extent - Lerp(0f, gap.y, Next());
+            while (position < extent)
+            {
+                float width = Next() < _wideStreetChance ? _wideStreetWidth : _streetWidth;
+                lines.Add(position);
+                widths.Add(width);
+                position += width + Lerp(gap.x, gap.y, Next());
+            }
+        }
+
+        // Which of the four districts a point belongs to: the side of each avenue it is on.
+        private int DistrictOf(Vector2 point)
+        {
+            return (AvenueSide(point, 0) > 0f ? 1 : 0) + (AvenueSide(point, 1) > 0f ? 2 : 0);
+        }
+
+        private float AvenueSide(Vector2 point, int avenue)
+        {
+            return Vector2.Dot(_avenues[avenue].Normal, point - _avenues[avenue].Point);
+        }
+
+        // ---------------------------------------------------------------- lots and buildings
+
+        // Every block of every district is split into lots; lots that would stand on an avenue, outside the city or
+        // in the plaza around the tower are dropped.
+        private List<Lot> PlanLots()
+        {
+            var lots = new List<Lot>();
+            for (int d = 0; d < _districts.Length; d++)
+            {
+                District district = _districts[d];
+                for (int i = 0; i + 1 < district.XLines.Count; i++)
+                {
+                    for (int j = 0; j + 1 < district.ZLines.Count; j++)
                     {
-                        AddRoofDetails(details, footprint, max.y);
+                        float x0 = district.XLines[i] + district.XWidths[i] * 0.5f + _sidewalk;
+                        float x1 = district.XLines[i + 1] - district.XWidths[i + 1] * 0.5f - _sidewalk;
+                        float z0 = district.ZLines[j] + district.ZWidths[j] * 0.5f + _sidewalk;
+                        float z1 = district.ZLines[j + 1] - district.ZWidths[j + 1] * 0.5f - _sidewalk;
+                        Vector2 center = Rotate(new Vector2((x0 + x1) * 0.5f, (z0 + z1) * 0.5f), district.Angle);
+                        if (center.magnitude > _cityRadius + 80f || DistrictOf(center) != d || Next() < _emptyBlockChance)
+                        {
+                            continue;
+                        }
+                        SplitBlock(lots, d, x0, x1, z0, z1);
                     }
                 }
             }
+            return lots;
+        }
+
+        // Lots of different widths along the block, sometimes two rows deep.
+        private void SplitBlock(List<Lot> lots, int d, float x0, float x1, float z0, float z1)
+        {
+            District district = _districts[d];
+            float length = x1 - x0;
+            float depth = z1 - z0;
+            int rows = depth > 44f && Next() < 0.6f ? 2 : 1;
+            for (int r = 0; r < rows; r++)
+            {
+                float rz0 = z0 + depth * r / rows;
+                float rz1 = z0 + depth * (r + 1) / rows;
+                float x = x0;
+                while (x < x1 - 8f)
+                {
+                    float width = Mathf.Min(x1 - x, Lerp(14f, 45f, Next()));
+                    float gap = Lerp(0.8f, 3f, Next());
+                    float w = (width - gap) * Lerp(0.75f, 1f, Next());
+                    float h = (rz1 - rz0 - gap) * Lerp(0.7f, 1f, Next());
+                    var localCenter = new Vector2(x + width * 0.5f, (rz0 + rz1) * 0.5f);
+                    var lot = new Lot
+                    {
+                        Center = Rotate(localCenter, district.Angle),
+                        Half = new Vector2(w * 0.5f, h * 0.5f),
+                        Angle = district.Angle
+                    };
+                    if (LotFits(lot, d))
+                    {
+                        lots.Add(lot);
+                    }
+                    x += width;
+                }
+            }
+        }
+
+        // A lot fits if all its corners are in its district, off the avenues, inside the city and out of the plaza.
+        private bool LotFits(Lot lot, int district)
+        {
+            float clearance = _avenueWidth * 0.5f + _sidewalk;
+            for (int c = 0; c < 4; c++)
+            {
+                var offset = new Vector2(c % 2 == 0 ? -lot.Half.x : lot.Half.x, c < 2 ? -lot.Half.y : lot.Half.y);
+                Vector2 corner = lot.Center + Rotate(offset, lot.Angle);
+                if (DistrictOf(corner) != district || corner.magnitude > _cityRadius || corner.magnitude < _plazaRadius ||
+                    Mathf.Abs(AvenueSide(corner, 0)) < clearance || Mathf.Abs(AvenueSide(corner, 1)) < clearance)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // The biggest lots at the right distance become skyscrapers, spread apart from each other.
+        private HashSet<int> PickSkyscrapers(List<Lot> lots)
+        {
+            var candidates = new List<int>();
+            for (int i = 0; i < lots.Count; i++)
+            {
+                float distance = lots[i].Center.magnitude;
+                if (distance >= _neighborDistance.x && distance <= _neighborDistance.y)
+                {
+                    candidates.Add(i);
+                }
+            }
+            candidates.Sort((a, b) => (lots[b].Half.x * lots[b].Half.y).CompareTo(lots[a].Half.x * lots[a].Half.y));
+
+            var picked = new HashSet<int>();
+            foreach (int index in candidates)
+            {
+                if (picked.Count >= _neighborTowers)
+                {
+                    break;
+                }
+                bool farEnough = true;
+                foreach (int other in picked)
+                {
+                    farEnough &= Vector2.Distance(lots[index].Center, lots[other].Center) > 70f;
+                }
+                if (farEnough)
+                {
+                    picked.Add(index);
+                }
+            }
+            return picked;
         }
 
         // Mostly low and mid rise (squaring the random number favors the low end), with a few tall towers anywhere.
@@ -202,47 +374,32 @@ namespace AlienInvaders.Views
         private float MaxHeight => -_groundTop - _clearanceBelowTower;
 
         // Air conditioners, water tanks and stair huts: small boxes that show how big a building really is.
-        private void AddRoofDetails(MeshBuffer details, Rect roof, float roofY)
+        private void AddRoofDetails(MeshBuffer details, Lot roof, float roofY)
         {
             int count = (int)(Next() * 4f);
             for (int k = 0; k < count; k++)
             {
-                float w = Lerp(1.5f, 4f, Next());
-                float d = Lerp(1.5f, 4f, Next());
-                float h = Lerp(1f, 3.5f, Next());
-                float x = Lerp(roof.xMin + w * 0.5f + 0.5f, roof.xMax - w * 0.5f - 0.5f, Next());
-                float z = Lerp(roof.yMin + d * 0.5f + 0.5f, roof.yMax - d * 0.5f - 0.5f, Next());
-                AddBox(details, new Vector3(x - w * 0.5f, roofY, z - d * 0.5f), new Vector3(x + w * 0.5f, roofY + h, z + d * 0.5f), Color.white);
+                var half = new Vector2(Lerp(0.75f, 2f, Next()), Lerp(0.75f, 2f, Next()));
+                var local = new Vector2(Lerp(-roof.Half.x + half.x, roof.Half.x - half.x, Next()),
+                                        Lerp(-roof.Half.y + half.y, roof.Half.y - half.y, Next()));
+                var detail = new Lot { Center = roof.Center + Rotate(local, roof.Angle), Half = half, Angle = roof.Angle };
+                AddOrientedBox(details, detail, roofY, roofY + Lerp(1f, 3.5f, Next()), Color.white);
             }
         }
 
-        // Footprints of the skyscrapers next to the tower, spread around it so one is in view wherever the player looks.
-        private List<Rect> PlaceNeighborTowers()
-        {
-            var footprints = new List<Rect>();
-            float start = (float)(Next() * 360.0);
-            for (int i = 0; i < _neighborTowers; i++)
-            {
-                float azimuth = (start + 360f / _neighborTowers * i + Lerp(-20f, 20f, Next())) * Mathf.Deg2Rad;
-                float distance = Lerp(_neighborDistance.x, _neighborDistance.y, Next());
-                float width = Lerp(_neighborWidth.x, _neighborWidth.y, Next());
-                var center = new Vector2(Mathf.Sin(azimuth), Mathf.Cos(azimuth)) * distance;
-                footprints.Add(new Rect(center.x - width * 0.5f, center.y - width * 0.5f, width, width));
-            }
-            return footprints;
-        }
-
-        private void CreateNeighborTower(Rect footprint)
+        private void CreateSkyscraper(Lot lot)
         {
             float roof = Mathf.Min(Lerp(_neighborRoof.x, _neighborRoof.y, Next()), -_clearanceBelowTower);
             float height = roof - _groundTop;
+            Quaternion turn = Quaternion.Euler(0f, lot.Angle, 0f);
 
             var tower = GameObject.CreatePrimitive(PrimitiveType.Cube);
             tower.name = "Skyscraper";
             Destroy(tower.GetComponent<Collider>());
             tower.transform.SetParent(_root, false);
-            tower.transform.localPosition = new Vector3(footprint.center.x, _groundTop + height * 0.5f, footprint.center.y);
-            tower.transform.localScale = new Vector3(footprint.width, height, footprint.height);
+            tower.transform.localPosition = new Vector3(lot.Center.x, _groundTop + height * 0.5f, lot.Center.y);
+            tower.transform.localRotation = turn;
+            tower.transform.localScale = new Vector3(lot.Half.x * 2f, height, lot.Half.y * 2f);
             SetupRenderer(tower.GetComponent<MeshRenderer>(), _neighborMaterial);
 
             // Antenna with a red warning light on top.
@@ -250,7 +407,7 @@ namespace AlienInvaders.Views
             antenna.name = "Antenna";
             Destroy(antenna.GetComponent<Collider>());
             antenna.transform.SetParent(_root, false);
-            antenna.transform.localPosition = new Vector3(footprint.center.x, roof + 5f, footprint.center.y);
+            antenna.transform.localPosition = new Vector3(lot.Center.x, roof + 5f, lot.Center.y);
             antenna.transform.localScale = new Vector3(0.5f, 10f, 0.5f);
             SetupRenderer(antenna.GetComponent<MeshRenderer>(), _roofDetailMaterial);
 
@@ -258,7 +415,7 @@ namespace AlienInvaders.Views
             beacon.name = "Beacon";
             Destroy(beacon.GetComponent<Collider>());
             beacon.transform.SetParent(_root, false);
-            beacon.transform.localPosition = new Vector3(footprint.center.x, roof + 10.3f, footprint.center.y);
+            beacon.transform.localPosition = new Vector3(lot.Center.x, roof + 10.3f, lot.Center.y);
             beacon.transform.localScale = Vector3.one * 1.2f;
             var beaconRenderer = beacon.GetComponent<MeshRenderer>();
             SetupRenderer(beaconRenderer, _beaconMaterial);
@@ -292,6 +449,87 @@ namespace AlienInvaders.Views
             }
         }
 
+        // ---------------------------------------------------------------- street map for the ground shader
+
+        // Paints the streets into a texture: red = asphalt, green = the glow line of the street lights along each curb.
+        private void PaintStreetMap()
+        {
+            int size = _mapResolution;
+            var pixels = new Color32[size * size];
+            float metersPerPixel = _mapHalfSize * 2f / size;
+            // Each district's turn, precomputed: millions of pixels are turned into district coordinates.
+            var cos = new float[_districts.Length];
+            var sin = new float[_districts.Length];
+            for (int d = 0; d < _districts.Length; d++)
+            {
+                cos[d] = Mathf.Cos(_districts[d].Angle * Mathf.Deg2Rad);
+                sin[d] = Mathf.Sin(_districts[d].Angle * Mathf.Deg2Rad);
+            }
+            for (int py = 0; py < size; py++)
+            {
+                for (int px = 0; px < size; px++)
+                {
+                    var point = new Vector2((px + 0.5f) * metersPerPixel - _mapHalfSize, (py + 0.5f) * metersPerPixel - _mapHalfSize);
+                    float edge = float.MaxValue;
+                    float lamp = 0f;
+                    for (int a = 0; a < _avenues.Length; a++)
+                    {
+                        AddStreet(Mathf.Abs(AvenueSide(point, a)), _avenueWidth * 0.5f, ref edge, ref lamp);
+                    }
+                    int d = DistrictOf(point);
+                    District district = _districts[d];
+                    // Same as Rotate(point, -angle).
+                    float localX = point.x * cos[d] - point.y * sin[d];
+                    float localZ = point.x * sin[d] + point.y * cos[d];
+                    NearestLine(district.XLines, district.XWidths, localX, ref edge, ref lamp);
+                    NearestLine(district.ZLines, district.ZWidths, localZ, ref edge, ref lamp);
+
+                    byte asphalt = (byte)(Mathf.Clamp01(0.5f - edge / metersPerPixel) * 255f);
+                    pixels[py * size + px] = new Color32(asphalt, (byte)(lamp * 255f), 0, 255);
+                }
+            }
+
+            var map = new Texture2D(size, size, TextureFormat.RGBA32, true, true)
+            {
+                name = "CityStreetMap",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Trilinear
+            };
+            map.SetPixels32(pixels);
+            map.Apply(true, true);
+            Shader.SetGlobalTexture(CityMapId, map);
+            Shader.SetGlobalFloat(CityMapHalfId, _mapHalfSize);
+        }
+
+        // Closest street line of a sorted list (binary search), then the one before it.
+        private static void NearestLine(List<float> lines, List<float> widths, float value, ref float edge, ref float lamp)
+        {
+            int index = lines.BinarySearch(value);
+            if (index < 0)
+            {
+                index = ~index;
+            }
+            for (int k = index - 1; k <= index; k++)
+            {
+                if (k >= 0 && k < lines.Count)
+                {
+                    AddStreet(Mathf.Abs(value - lines[k]), widths[k] * 0.5f, ref edge, ref lamp);
+                }
+            }
+        }
+
+        // edge: signed distance to the nearest asphalt (negative inside a street); lamp: glow of the curb lights.
+        private static void AddStreet(float distance, float halfWidth, ref float edge, ref float lamp)
+        {
+            edge = Mathf.Min(edge, distance - halfWidth);
+            if (distance < halfWidth + 1.5f)
+            {
+                lamp = Mathf.Max(lamp, Mathf.Exp(-Mathf.Abs(distance - halfWidth * 0.8f) * 2.5f));
+            }
+        }
+
+        // ---------------------------------------------------------------- meshes
+
         private void CreateMeshObject(string name, MeshBuffer buffer, Material material)
         {
             var mesh = new Mesh { name = name };
@@ -318,20 +556,22 @@ namespace AlienInvaders.Views
             meshRenderer.receiveShadows = false;
         }
 
-        // A box without its bottom face (never seen). Each face is listed clockwise as seen from outside.
-        private static void AddBox(MeshBuffer buffer, Vector3 min, Vector3 max, Color color)
+        // A box turned around the vertical axis, without its bottom face (never seen). Faces are listed clockwise
+        // as seen from outside; turning the whole box keeps that order.
+        private static void AddOrientedBox(MeshBuffer buffer, Lot lot, float yMin, float yMax, Color color)
         {
             int first = buffer.Vertices.Count;
-            AddQuad(buffer, Vector3.up, new Vector3(min.x, max.y, min.z), new Vector3(min.x, max.y, max.z),
-                new Vector3(max.x, max.y, max.z), new Vector3(max.x, max.y, min.z));
-            AddQuad(buffer, Vector3.forward, new Vector3(max.x, min.y, max.z), new Vector3(max.x, max.y, max.z),
-                new Vector3(min.x, max.y, max.z), new Vector3(min.x, min.y, max.z));
-            AddQuad(buffer, Vector3.back, new Vector3(min.x, min.y, min.z), new Vector3(min.x, max.y, min.z),
-                new Vector3(max.x, max.y, min.z), new Vector3(max.x, min.y, min.z));
-            AddQuad(buffer, Vector3.right, new Vector3(max.x, min.y, min.z), new Vector3(max.x, max.y, min.z),
-                new Vector3(max.x, max.y, max.z), new Vector3(max.x, min.y, max.z));
-            AddQuad(buffer, Vector3.left, new Vector3(min.x, min.y, max.z), new Vector3(min.x, max.y, max.z),
-                new Vector3(min.x, max.y, min.z), new Vector3(min.x, min.y, min.z));
+            Quaternion turn = Quaternion.Euler(0f, lot.Angle, 0f);
+            var center = new Vector3(lot.Center.x, 0f, lot.Center.y);
+            Vector3 P(float x, float y, float z) => center + turn * new Vector3(x, 0f, z) + Vector3.up * y;
+            float hx = lot.Half.x;
+            float hz = lot.Half.y;
+
+            AddQuad(buffer, Vector3.up, P(-hx, yMax, -hz), P(-hx, yMax, hz), P(hx, yMax, hz), P(hx, yMax, -hz));
+            AddQuad(buffer, turn * Vector3.forward, P(hx, yMin, hz), P(hx, yMax, hz), P(-hx, yMax, hz), P(-hx, yMin, hz));
+            AddQuad(buffer, turn * Vector3.back, P(-hx, yMin, -hz), P(-hx, yMax, -hz), P(hx, yMax, -hz), P(hx, yMin, -hz));
+            AddQuad(buffer, turn * Vector3.right, P(hx, yMin, -hz), P(hx, yMax, -hz), P(hx, yMax, hz), P(hx, yMin, hz));
+            AddQuad(buffer, turn * Vector3.left, P(-hx, yMin, hz), P(-hx, yMax, hz), P(-hx, yMax, -hz), P(-hx, yMin, -hz));
             for (int i = first; i < buffer.Vertices.Count; i++)
             {
                 buffer.Colors.Add(color);
@@ -367,17 +607,11 @@ namespace AlienInvaders.Views
             return buffer;
         }
 
-        private static bool Overlaps(Rect footprint, List<Rect> others)
+        // Turns a top-view point around the vertical axis like Quaternion.Euler(0, degrees, 0) does in 3D.
+        private static Vector2 Rotate(Vector2 point, float degrees)
         {
-            foreach (Rect other in others)
-            {
-                var padded = new Rect(other.xMin - 3f, other.yMin - 3f, other.width + 6f, other.height + 6f);
-                if (padded.Overlaps(footprint))
-                {
-                    return true;
-                }
-            }
-            return false;
+            Vector3 turned = Quaternion.Euler(0f, degrees, 0f) * new Vector3(point.x, 0f, point.y);
+            return new Vector2(turned.x, turned.z);
         }
 
         private float Next() => (float)_random.NextDouble();
