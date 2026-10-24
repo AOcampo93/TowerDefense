@@ -9,6 +9,8 @@ namespace AlienInvaders.Motion
     /// move (stable frame, comfort rule); instead the city, the ground and the horizon rotate around the base of the
     /// tower, which is what someone riding a leaning tower would see: the tower stays straight under their feet and
     /// the city leans the other way. Drops lift the city (the player sinks) and shaking adds a small tremble.
+    /// Everything else that is not part of the tower leans too, so nothing slides against anything: the sky and the
+    /// sun (SkyController follows this transform) and the portals, ships and explosions (the sky roots below).
     /// Samples arrive at 20 Hz, so they are smoothed to the display frame rate.
     /// Lives on TiltPivot.
     /// </summary>
@@ -18,6 +20,9 @@ namespace AlienInvaders.Motion
         [SerializeField] private Vector3 _pivotPoint = new Vector3(0f, -60.3f, 0f);
         [Tooltip("Seconds to catch up with a new sample (a new one arrives every 0.05 s).")]
         [SerializeField] private float _smoothing = 0.08f;
+        [Tooltip("Portals, ships and explosions: they lean with the world but around the player instead of the base of" +
+            " the tower, so their space keeps the top of the tower at its origin (the space of the core).")]
+        [SerializeField] private Transform[] _skyRoots;
 
         [Header("Tremble at full shake")]
         [SerializeField] private float _maxShakeDegrees = 0.5f;
@@ -75,6 +80,11 @@ namespace AlienInvaders.Motion
             // The tremble turns around the player; a drop (negative heave) lifts the world by the same amount.
             transform.localRotation = tremble * tilt;
             transform.localPosition = tremble * tiltOffset + trembleOffset - Vector3.up * _heave;
+            // Far away in the sky only the rotation shows: the same turn keeps them still against the clouds.
+            foreach (Transform root in _skyRoots)
+            {
+                root.localRotation = transform.localRotation;
+            }
         }
 
         // Smooth noise between -1 and 1; the offset picks an independent curve for each axis.

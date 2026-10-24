@@ -29,8 +29,11 @@ namespace AlienInvaders.Game
         /// <summary>The core ship shown by this GameObject (null while it waits in the pool).</summary>
         public EnemyShip Ship { get; private set; }
 
-        /// <summary>World position of the facade point the ship is aiming at.</summary>
-        public Vector3 TargetWorld => transform.parent.TransformPoint(Ship.TargetPoint.ToUnity());
+        /// <summary>
+        /// World position of the facade point the ship is aiming at. Read through the tower's space, not ShipsRoot:
+        /// ShipsRoot leans with the sky, the tower does not.
+        /// </summary>
+        public Vector3 TargetWorld => _spawner.TowerSpace.TransformPoint(Ship.TargetPoint.ToUnity());
 
         /// <summary>Links a freshly created core ship to this pooled GameObject and places it at the portal.</summary>
         public void Init(EnemyShip ship, ShipSpawner spawner)
@@ -84,7 +87,7 @@ namespace AlienInvaders.Game
 
             // Nose first while flying; while aiming the nose points at the tower, so the warning laser comes out of it.
             // The ship eases into each new heading, so it never twitches.
-            Vector3 look = Ship.Phase == ShipPhase.Aiming ? Ship.TargetPoint.ToUnity() - current : current - previous;
+            Vector3 look = Ship.Phase == ShipPhase.Aiming ? transform.parent.InverseTransformPoint(TargetWorld) - current : current - previous;
             if (look.sqrMagnitude > 0.000001f)
             {
                 transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.LookRotation(look),

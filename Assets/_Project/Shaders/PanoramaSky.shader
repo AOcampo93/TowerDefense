@@ -1,5 +1,6 @@
-// Sky from a 360 photo (equirectangular image). It turns slowly so the clouds drift, and near the horizon and below
-// it it fades into the fog color, so the hazy city and the sky meet without a visible edge.
+// Sky from a 360 photo (equirectangular image). It turns slowly so the clouds drift, it leans with the city when the
+// tower leans, and near the horizon and below it it fades into the fog color, so the hazy city and the sky meet
+// without a visible edge.
 Shader "AlienInvaders/PanoramaSky"
 {
     Properties
@@ -38,8 +39,11 @@ Shader "AlienInvaders/PanoramaSky"
                 float _Rotation;
             CBUFFER_END
 
-            // Set every frame by SkyController (a global, so the material asset is never modified at runtime).
+            // Set every frame by SkyController (globals, so the material asset is never modified at runtime).
             float _AI_SkyRotation;
+            // Quaternion that turns a view direction back into the level sky while the world leans. Never set (all
+            // zeros) it leaves the direction as it is, so the sky is level in the editor too.
+            float4 _AI_SkyTilt;
 
             struct Attributes
             {
@@ -65,10 +69,15 @@ Shader "AlienInvaders/PanoramaSky"
                 return output;
             }
 
+            float3 Rotate(float4 rotation, float3 direction)
+            {
+                return direction + 2.0 * cross(rotation.xyz, cross(rotation.xyz, direction) + rotation.w * direction);
+            }
+
             half4 Frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-                float3 direction = normalize(input.direction);
+                float3 direction = Rotate(_AI_SkyTilt, normalize(input.direction));
 
                 // Compass angle from +Z towards +X and elevation, mapped onto the panorama (+Z is its center). Painted
                 // panoramas do not always have their horizon in the middle, so the picture can be moved up or down.

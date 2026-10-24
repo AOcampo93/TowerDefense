@@ -19,8 +19,11 @@ namespace AlienInvaders.Game
     public class ShipSpawner : MonoBehaviour
     {
         [SerializeField] private GameController _game;
-        [Tooltip("Parent of every ship. Its local space is the core space: tower center at the origin.")]
+        [Tooltip("Parent of every ship. Its local space is the core space: tower center at the origin. It leans with" +
+            " the sky when the tower leans.")]
         [SerializeField] private Transform _shipsRoot;
+        [Tooltip("The core space as the tower sees it (WorldVR): it never leans, so points on the facade stay on it.")]
+        [SerializeField] private Transform _towerSpace;
         [SerializeField] private ShipController _fighterPrefab;
         [SerializeField] private ShipController _bomberPrefab;
         [SerializeField] private ExplosionPool _explosions;
@@ -50,6 +53,9 @@ namespace AlienInvaders.Game
 
         /// <summary>Ships currently flying (read by the radar).</summary>
         public IReadOnlyList<ShipController> ActiveShips => _active;
+
+        /// <summary>Core space that stays fixed to the tower (ships aim at its facade through it).</summary>
+        public Transform TowerSpace => _towerSpace;
 
         /// <summary>Number of ships currently flying.</summary>
         public int AliveCount => _active.Count;

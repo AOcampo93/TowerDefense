@@ -26185,6 +26185,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Game.ShipSpawner
   _game: {fileID: 1908683091}
   _shipsRoot: {fileID: 803121571}
+  _towerSpace: {fileID: 1213854241}
   _fighterPrefab: {fileID: 1665761235359433715, guid: 54fd787bcc13f4e828436859f0b06091, type: 3}
   _bomberPrefab: {fileID: 7475921335747704945, guid: 31a89c5e9dbb446c88318d3d2b601e1a, type: 3}
   _explosions: {fileID: 1908683095}
@@ -26407,6 +26408,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.SkyController
   _sun: {fileID: 1654146281}
+  _world: {fileID: 2070411497}
   _sunAzimuth: 14.4
   _sunElevation: 4
   _degreesPerSecond: 0.05
@@ -27900,6 +27902,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Motion.CameraMotionOutput
   _pivotPoint: {x: 0, y: -60.3, z: 0}
   _smoothing: 0.08
+  _skyRoots:
+  - {fileID: 1559194469}
+  - {fileID: 803121571}
+  - {fileID: 1918742324}
   _maxShakeDegrees: 0.5
   _maxShakeMeters: 0.03
   _shakeFrequency: 9
