@@ -12,8 +12,9 @@ namespace AlienInvaders.Game
     /// <summary>
     /// Owns the ship pools and the list of ships in the air. It creates the core ship with the ShipFactory, gives it a
     /// pooled GameObject and turns ship events into game consequences: a shot damages the tower (and blows up its
-    /// facade), a destroyed ship counts for the score, a shot down at the city sets a roof on fire. Other systems
-    /// (portals, radar) only ask it to spawn ships or read ActiveShips.
+    /// facade), a destroyed ship counts for the score, a shot down at the city sets a roof on fire. Every ship in the
+    /// air is in one Airspace, so ships keep away from each other. Other systems (portals, radar) only ask it to
+    /// spawn ships or read ActiveShips.
     /// </summary>
     public class ShipSpawner : MonoBehaviour
     {
@@ -42,6 +43,7 @@ namespace AlienInvaders.Game
         [SerializeField] private bool _debugSpawnKey = true;
 
         private readonly List<ShipController> _active = new List<ShipController>();
+        private readonly Airspace _airspace = new Airspace();
         private readonly System.Random _debugRandom = new System.Random(5);
         private ObjectPool<ShipController> _fighters;
         private ObjectPool<ShipController> _bombers;
@@ -75,11 +77,18 @@ namespace AlienInvaders.Game
         /// <summary>Creates a ship of the given type at a position in tower space (a portal).</summary>
         public ShipController Spawn(ShipType type, System.Numerics.Vector3 position, WaveConfig wave, System.Random random)
         {
-            EnemyShip ship = ShipFactory.Create(type, position, wave, random);
+            EnemyShip ship = ShipFactory.Create(type, position, wave, random, _airspace);
+            _airspace.Add(ship);
             ShipController controller = PoolFor(type).Get();
             controller.Init(ship, this);
             _active.Add(controller);
             return controller;
+        }
+
+        /// <summary>True when no ship is near a point in tower space, so a portal there can release the next ship.</summary>
+        public bool IsClear(System.Numerics.Vector3 position)
+        {
+            return _airspace.IsClear(position, Balance.ShipSeparation);
         }
 
         /// <summary>Test helper: one wave 1 Fighter coming out of a random point of the sky.</summary>
@@ -139,6 +148,7 @@ namespace AlienInvaders.Game
         private void Remove(ShipController ship)
         {
             ObjectPool<ShipController> pool = PoolFor(ship.Ship.Type);
+            _airspace.Remove(ship.Ship);
             ship.Despawn();
             _active.Remove(ship);
             pool.Release(ship);

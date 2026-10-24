@@ -9,8 +9,8 @@ namespace AlienInvaders.Core.Ships
     /// </summary>
     public class Bomber : EnemyShip
     {
-        public Bomber(Vector3 spawnPosition, WaveConfig wave, Random random)
-            : base(spawnPosition, random)
+        public Bomber(Vector3 spawnPosition, WaveConfig wave, Random random, Airspace airspace = null)
+            : base(spawnPosition, random, airspace)
         {
             Type = ShipType.Bomber;
             Health = Balance.BomberHealth;

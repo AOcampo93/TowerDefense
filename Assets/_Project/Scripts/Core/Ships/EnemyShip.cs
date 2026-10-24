@@ -9,7 +9,8 @@ namespace AlienInvaders.Core.Ships
     /// laser) and fire at the tower. Subclasses only decide HOW they get to a station and their stats.
     /// Ships fly like alien craft: in straight dashes that speed up and slow down smoothly, never
     /// swaying, and they come to rest exactly on their station. A dash never passes through the
-    /// tower: when the straight way would, the ship turns at a point beside it.
+    /// tower: when the straight way would, the ship turns at a point beside it. With an Airspace, each ship
+    /// picks a station and a way that keep it away from the other ships.
     ///
     /// Coordinates: tower center at the origin, X = East, Y = Up, Z = North (same as Unity).
     /// </summary>
@@ -17,8 +18,11 @@ namespace AlienInvaders.Core.Ships
     {
         private const float EmergeSeconds = 1f;
         private const float ArrivalDistance = 2f;
+        // Possible stations tried when the sky is shared with other ships.
+        private const int StationCandidates = 16;
 
         protected readonly Random Random;
+        private readonly Airspace _airspace;
         private float _phaseTimer;
         private float _currentSpeed;
         // The way to the current destination, with its optional turning point.
@@ -45,6 +49,9 @@ namespace AlienInvaders.Core.Ships
         /// <summary>Point in the sky where the ship stops to aim and fire.</summary>
         public Vector3 Station { get; private set; }
 
+        /// <summary>Where the ship turns on its way to the station (the station itself when it flies straight there).</summary>
+        public Vector3 TurningPoint => _hasTurningPoint ? _turningPoint : Station;
+
         /// <summary>Point on the tower facade that the ship is targeting.</summary>
         public Vector3 TargetPoint { get; private set; }
 
@@ -67,10 +74,12 @@ namespace AlienInvaders.Core.Ships
 
         /// <param name="spawnPosition">Portal position.</param>
         /// <param name="random">Shared deterministic random generator (wave seed).</param>
-        protected EnemyShip(Vector3 spawnPosition, Random random)
+        /// <param name="airspace">The other ships, to keep away from them (null: the ship flies alone).</param>
+        protected EnemyShip(Vector3 spawnPosition, Random random, Airspace airspace)
         {
             Position = spawnPosition;
             Random = random;
+            _airspace = airspace;
             _phaseTimer = EmergeSeconds;
             ChooseNewStation();
         }
@@ -146,15 +155,39 @@ namespace AlienInvaders.Core.Ships
 
         /// <summary>
         /// Picks a random point in the flight zone and the facade point it will shoot at. Ships aim a few meters
-        /// below their own height, but always somewhere on the facade under the player.
+        /// below their own height, but always somewhere on the facade under the player. In a shared sky a few random
+        /// points are tried: the first one whose way stays far enough from the other ships wins, or the freest one
+        /// when the sky is crowded.
         /// </summary>
         protected void ChooseNewStation()
         {
-            float azimuth = (float)(Random.NextDouble() * 360.0);
-            float radius = Lerp(Balance.MinFlightRadius, Balance.MaxFlightRadius, (float)Random.NextDouble());
-            float height = Lerp(Balance.MinFlightHeight, Balance.MaxFlightHeight, (float)Random.NextDouble());
+            int tries = _airspace == null ? 1 : StationCandidates;
+            float azimuth = 0f;
+            float height = 0f;
+            float bestClearance = -1f;
+            for (int i = 0; i < tries && bestClearance < Balance.ShipSeparation; i++)
+            {
+                float candidateAzimuth = (float)(Random.NextDouble() * 360.0);
+                float radius = Lerp(Balance.MinFlightRadius, Balance.MaxFlightRadius, (float)Random.NextDouble());
+                float candidateHeight = Lerp(Balance.MinFlightHeight, Balance.MaxFlightHeight, (float)Random.NextDouble());
+                Vector3 candidate = FromAzimuth(candidateAzimuth, radius, candidateHeight);
+                // The whole way counts, turning point included (subclasses only read Random and Balance here, so
+                // this is safe even while the base constructor runs).
+                bool turns = PickTurningPoint(Position, candidate, out Vector3 turn);
+                Vector3 via = turns ? turn : candidate;
+                float clearance = _airspace == null ? 0f : _airspace.Clearance(this, Position, via, candidate);
+                if (clearance > bestClearance)
+                {
+                    bestClearance = clearance;
+                    Station = candidate;
+                    azimuth = candidateAzimuth;
+                    height = candidateHeight;
+                    _wayEnd = candidate;
+                    _hasTurningPoint = turns;
+                    _turningPoint = turn;
+                }
+            }
 
-            Station = FromAzimuth(azimuth, radius, height);
             TargetSide = TowerIntegrity.SideFromAzimuth(azimuth);
             float impactHeight = Clamp(height - 8f, Balance.MinImpactHeight, Balance.MaxImpactHeight);
             TargetPoint = FacadePoint(TargetSide, azimuth, impactHeight);

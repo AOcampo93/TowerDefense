@@ -11,15 +11,17 @@ namespace AlienInvaders.Core
     {
         public int Number;
         public int Portals;
-        public int ShipsPerPortal;
+
+        /// <summary>Total ships in this wave, shared between its portals.</summary>
+        public int TotalShips;
+
+        /// <summary>Most ships of this wave flying at the same time; the others wait in their portals.</summary>
+        public int MaxShipsInAir;
         public float SpeedMultiplier;
         public float AimTimeFighter;
         public float AimTimeBomber;
         public float BomberRatio;
         public int Seed;
-
-        /// <summary>Total ships in this wave.</summary>
-        public int TotalShips => Portals * ShipsPerPortal;
     }
 
     /// <summary>

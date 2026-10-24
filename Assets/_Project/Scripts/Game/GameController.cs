@@ -285,7 +285,7 @@ namespace AlienInvaders.Game
 
         private IEnumerator RescueRoutine()
         {
-            // No more ships come out. The emergency cabin slams shut first, so the world never vanishes in view.
+            // No more ships come out. The emergency cabin builds itself around the player first, so the world never vanishes in view.
             _portals.StopAll();
             Coroutine fall = StartCoroutine(_elevator.PlayRescue(Balance.RescueSeconds));
             yield return new WaitForSeconds(_elevator.RescueCloseSeconds);

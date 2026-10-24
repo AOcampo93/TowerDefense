@@ -49,11 +49,12 @@ namespace AlienInvaders.Views
         [SerializeField] private Material _alarmLight;
         [Tooltip("Meters per second the shaft slides past at full speed during the ascent.")]
         [SerializeField] private float _ascentLightSpeed = 7f;
-        [SerializeField] private float _rescueLightSpeed = 14f;
+        [Tooltip("The emergency descent is a bit faster than the ascent, but steady, so the player can watch it.")]
+        [SerializeField] private float _rescueLightSpeed = 8f;
         [Tooltip("Seconds to reach full speed and to stop again, so the ride starts and ends softly.")]
         [SerializeField] private float _rampSeconds = 2.5f;
-        [Tooltip("The emergency cabin drops almost at once and brakes hard at the bottom.")]
-        [SerializeField] private float _rescueRampSeconds = 0.6f;
+        [Tooltip("The emergency cabin gets going quickly and brakes firmly at the bottom.")]
+        [SerializeField] private float _rescueRampSeconds = 1.5f;
 
         [Header("Haptics")]
         [Tooltip("Meters of shaft between two pulses (about one floor): the beat speeds up and slows down with the cabin.")]
@@ -75,8 +76,8 @@ namespace AlienInvaders.Views
         [SerializeField] private AudioSource _machine;
         [SerializeField] private float _machineVolume = 0.6f;
 
-        [Tooltip("Seconds the emergency cabin takes to slam shut during the rescue.")]
-        [SerializeField] private float _rescueCloseSeconds = 0.4f;
+        [Tooltip("Seconds the emergency cabin takes to build itself around the player during the rescue (slow enough to watch).")]
+        [SerializeField] private float _rescueCloseSeconds = 2.5f;
 
         private Vector3[] _wallPositions;
         private Vector3[] _wallScales;
@@ -153,7 +154,7 @@ namespace AlienInvaders.Views
         }
 
         /// <summary>
-        /// Coroutine: emergency descent. The cabin slams shut, red lights and the shaft rush upwards (the cabin
+        /// Coroutine: emergency descent. The cabin closes around the player, red lights and the shaft rush upwards (the cabin
         /// falls) and both controllers shake hard.
         /// </summary>
         public IEnumerator PlayRescue(float seconds)

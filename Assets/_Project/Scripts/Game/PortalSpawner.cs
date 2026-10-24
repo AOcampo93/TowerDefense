@@ -9,7 +9,8 @@ namespace AlienInvaders.Game
     /// <summary>
     /// Turns the core WaveCycle into portals and ships. When portals open it places them where the WaveGenerator
     /// says; when the attack starts it shares the wave's ships between the portals and releases them one by one
-    /// (every SpawnIntervalSeconds per portal); when the wave is cleared the portals close.
+    /// (every SpawnIntervalSeconds per portal, only while fewer than the wave's MaxShipsInAir are flying and once
+    /// the last ship has flown clear of the portal); when the wave is cleared the portals close.
     /// Ships still waiting inside a portal count as alive, so the wave never ends before its last ship leaves.
     /// </summary>
     public class PortalSpawner : MonoBehaviour
@@ -29,6 +30,8 @@ namespace AlienInvaders.Game
         private System.Random _random;
         private WaveConfig _wave;
         private int _pending;
+        // Portal that gets the next free place in the sky first, so no portal keeps its ships waiting for long.
+        private int _firstPortal;
 
         /// <summary>Portals currently in the sky (read by the radar).</summary>
         public IReadOnlyList<PortalView> Portals => _portals;
@@ -71,16 +74,29 @@ namespace AlienInvaders.Game
                 return;
             }
 
-            // Every portal releases its own ships at a steady pace, so ships arrive from several directions at once.
-            for (int i = 0; i < _portals.Count; i++)
+            // Every portal releases its own ships at a steady pace, so ships arrive from several directions at once,
+            // but never more than the wave allows in the air, and never on top of a ship still leaving the portal.
+            int count = _portals.Count;
+            for (int i = 0; i < count; i++)
             {
                 _releaseTimers[i] -= Time.deltaTime;
-                if (_releaseTimers[i] <= 0f && _queues[i].Count > 0)
+            }
+            for (int k = 0; k < count; k++)
+            {
+                int i = (_firstPortal + k) % count;
+                if (_releaseTimers[i] > 0f || _queues[i].Count == 0 || _ships.AliveCount >= _wave.MaxShipsInAir)
                 {
-                    _releaseTimers[i] = Balance.SpawnIntervalSeconds;
-                    _ships.Spawn(_queues[i].Dequeue(), _placements[i].ToPosition(), _wave, _random);
-                    _pending--;
+                    continue;
                 }
+                System.Numerics.Vector3 portal = _placements[i].ToPosition();
+                if (!_ships.IsClear(portal))
+                {
+                    continue;
+                }
+                _releaseTimers[i] = Balance.SpawnIntervalSeconds;
+                _ships.Spawn(_queues[i].Dequeue(), portal, _wave, _random);
+                _pending--;
+                _firstPortal = (i + 1) % count;
             }
         }
 
@@ -110,7 +126,7 @@ namespace AlienInvaders.Game
                 _portals.Add(portal);
                 _placements.Add(placement);
             }
-            Debug.Log($"[Game] Wave {wave.Number}: {wave.Portals} portals opening, {wave.TotalShips} ships");
+            Debug.Log($"[Game] Wave {wave.Number}: {wave.Portals} portals opening, {wave.TotalShips} ships, up to {wave.MaxShipsInAir} at once");
         }
 
         private void HandleAttackStarted(WaveConfig wave)

@@ -85,6 +85,67 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void Ships_InASharedSky_KeepTheirDistance()
+        {
+            // Two minutes of a busy wave: ships come out of the portals whenever there is room, as in the game.
+            for (int seed = 1; seed <= 5; seed++)
+            {
+                WaveConfig wave = WaveGenerator.Build(7, seed);
+                var random = new Random(seed);
+                var airspace = new Airspace();
+                var ships = new System.Collections.Generic.List<EnemyShip>();
+                var portals = WaveGenerator.PortalPositions(wave);
+                float closest = float.MaxValue;
+                float nextRelease = 0f;
+                int portal = 0;
+                for (float time = 0f; time < 120f; time += 0.05f)
+                {
+                    Vector3 exit = portals[portal % portals.Count].ToPosition();
+                    if (ships.Count < wave.MaxShipsInAir && time >= nextRelease && airspace.IsClear(exit, Balance.ShipSeparation))
+                    {
+                        ShipType type = ships.Count % 4 == 3 ? ShipType.Bomber : ShipType.Fighter;
+                        EnemyShip ship = ShipFactory.Create(type, exit, wave, random, airspace);
+                        airspace.Add(ship);
+                        ships.Add(ship);
+                        portal++;
+                        nextRelease = time + Balance.SpawnIntervalSeconds / portals.Count;
+                    }
+                    foreach (EnemyShip ship in ships)
+                    {
+                        ship.Tick(0.05f);
+                    }
+                    for (int a = 0; a < ships.Count; a++)
+                    {
+                        for (int b = a + 1; b < ships.Count; b++)
+                        {
+                            closest = Math.Min(closest, Vector3.Distance(ships[a].Position, ships[b].Position));
+                        }
+                    }
+                }
+                Assert.AreEqual(wave.MaxShipsInAir, ships.Count);
+                // Hull centers: two fighters about 29 m long side by side never overlap.
+                Assert.Greater(closest, 20f, $"two ships flew into each other with seed {seed}");
+            }
+        }
+
+        [Test]
+        public void Portal_IsClearOnlyOnceTheLastShipFlewAway()
+        {
+            var airspace = new Airspace();
+            Vector3 exit = EnemyShip.FromAzimuth(30f, 160f, 30f);
+            EnemyShip ship = ShipFactory.Create(ShipType.Fighter, exit, WaveGenerator.Build(1, 1), new Random(1), airspace);
+            airspace.Add(ship);
+            Assert.IsFalse(airspace.IsClear(exit, Balance.ShipSeparation));
+            for (int i = 0; i < 200 && !airspace.IsClear(exit, Balance.ShipSeparation); i++)
+            {
+                ship.Tick(0.05f);
+            }
+            Assert.IsTrue(airspace.IsClear(exit, Balance.ShipSeparation));
+            airspace.Remove(ship);
+            Assert.AreEqual(0, airspace.Count);
+        }
+
+        [Test]
         public void Ship_FiresAfterAimTime()
         {
             EnemyShip ship = NewFighter();

@@ -9,14 +9,15 @@ namespace AlienInvaders.Core.Ships
     /// </summary>
     public static class ShipFactory
     {
-        public static EnemyShip Create(ShipType type, Vector3 spawnPosition, WaveConfig wave, Random random)
+        public static EnemyShip Create(ShipType type, Vector3 spawnPosition, WaveConfig wave, Random random,
+            Airspace airspace = null)
         {
             switch (type)
             {
                 case ShipType.Fighter:
-                    return new Fighter(spawnPosition, wave, random);
+                    return new Fighter(spawnPosition, wave, random, airspace);
                 case ShipType.Bomber:
-                    return new Bomber(spawnPosition, wave, random);
+                    return new Bomber(spawnPosition, wave, random, airspace);
                 default:
                     throw new NotSupportedException($"Ship type {type} is not implemented yet.");
             }

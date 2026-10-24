@@ -16,6 +16,19 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void Ships_GrowByTwo_AndOnlyAFewFlyAtOnce()
+        {
+            int[] inAir = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 8 };
+            for (int n = 1; n <= inAir.Length; n++)
+            {
+                WaveConfig wave = WaveGenerator.Build(n, 1);
+                Assert.AreEqual(3 + 2 * (n - 1), wave.TotalShips, $"ships in wave {n}");
+                Assert.AreEqual(inAir[n - 1], wave.MaxShipsInAir, $"ships in the air in wave {n}");
+                Assert.LessOrEqual(wave.MaxShipsInAir, wave.TotalShips);
+            }
+        }
+
+        [Test]
         public void AimTime_NeverBelowMinimum()
         {
             WaveConfig late = WaveGenerator.Build(50, 1);
@@ -123,7 +136,7 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
-        public void HeldTrigger_OverheatsInAboutThreeSeconds()
+        public void HeldTrigger_OverheatsInAboutFourAndAHalfSeconds()
         {
             // Same loop as the game: one Tick per headset frame (72 Hz), firing whenever the weapon allows it.
             var weapon = new WeaponHeat();
@@ -136,7 +149,7 @@ namespace AlienInvaders.Tests
                 elapsed += frame;
             }
             Assert.IsTrue(weapon.Overheated);
-            Assert.That(elapsed, Is.InRange(2.6f, 3.6f));
+            Assert.That(elapsed, Is.InRange(4f, 5f));
         }
 
         [Test]

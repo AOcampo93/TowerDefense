@@ -52,8 +52,11 @@ namespace AlienInvaders.Core
         /// <summary>Seconds for the cabin to open and sink under the player's feet when arriving at the top.</summary>
         public const float ArrivalSeconds = 5f;
 
-        /// <summary>Length of the emergency descent after the collapse (comfort: at most 3 to 5 s of falling).</summary>
-        public const float RescueSeconds = 4f;
+        /// <summary>
+        /// Length of the emergency descent after the collapse. The cabin goes down at a steady, moderate speed (no free
+        /// fall), so the player has time to see the elevator and the city rising around it.
+        /// </summary>
+        public const float RescueSeconds = 8f;
 
         /// <summary>
         /// The hard stop at the bottom: a quick dip to black that hides the switch to the real room behind the closed
@@ -66,10 +69,14 @@ namespace AlienInvaders.Core
         /// <summary>The weapon fires bursts: a held trigger shoots this many bolts per second.</summary>
         public const float ShotsPerSecond = 10f;
 
-        /// <summary>Heat of one bolt: a held trigger overheats the weapon in about three seconds.</summary>
-        public const float HeatPerShot = 0.034f;
-        public const float CoolingPerSecond = 0.35f;
-        public const float OverheatLockSeconds = 2f;
+        /// <summary>
+        /// Heat of one bolt: a held trigger overheats the weapon in about four and a half seconds, enough to bring down
+        /// several fighters in one burst, so aiming matters more than waiting for the barrel to cool.
+        /// </summary>
+        public const float HeatPerShot = 0.024f;
+        /// <summary>Cooling while the trigger is released: from hot to cold in two seconds.</summary>
+        public const float CoolingPerSecond = 0.5f;
+        public const float OverheatLockSeconds = 1.5f;
         public const float HeatAfterOverheat = 0.5f;
 
         /// <summary>Radius of the shot's sphere cast (meters): a slight aim assist, so a near miss still hits.</summary>
@@ -91,11 +98,31 @@ namespace AlienInvaders.Core
         public const float MaxBomberRatio = 0.4f;
         public const float PeaceSeconds = 3f;
         public const float PortalOpeningSeconds = 5f;
-        public const float SpawnIntervalSeconds = 0.6f;
+
+        /// <summary>Seconds between two ships coming out of the same portal, so each one has flown clear of it.</summary>
+        public const float SpawnIntervalSeconds = 2.5f;
+
+        /// <summary>Ships in the first wave; every wave brings this many more.</summary>
+        public const int FirstWaveShips = 3;
+        public const int ShipsAddedPerWave = 2;
+
+        /// <summary>
+        /// Most ships flying at the same time: 3 in the first waves, one more every two waves, up to 8. The rest wait
+        /// in their portals, so a wave lasts longer instead of crowding the sky, and a skilled player who shoots them
+        /// down quickly is the one who keeps the sky clear.
+        /// </summary>
+        public const int FirstWaveShipsInAir = 3;
+        public const int MaxShipsInAir = 8;
+
+        /// <summary>
+        /// Distance (meters) a ship keeps from the others when it picks where to stop and how to get there. Ships are
+        /// huge (a fighter is about 29 m long, a bomber 45 m), so this keeps them from flying into each other.
+        /// </summary>
+        public const float ShipSeparation = 45f;
 
         // ---------- Ships ----------
-        /// <summary>Bolts a fighter takes (under a second of burst).</summary>
-        public const int FighterHealth = 8;
+        /// <summary>Bolts a fighter takes (half a second of burst).</summary>
+        public const int FighterHealth = 5;
         public const float FighterSpeed = 16f;
         public const float FighterAimTime = 1.5f;
         public const float FighterDamage = 2f;
@@ -106,8 +133,8 @@ namespace AlienInvaders.Core
         /// <summary>How far sideways (meters) the turning point of a fighter's two dashes may be.</summary>
         public const float FighterDoglegOffset = 18f;
 
-        /// <summary>Bolts a bomber takes (about two seconds of burst).</summary>
-        public const int BomberHealth = 20;
+        /// <summary>Bolts a bomber takes (a bit over a second of burst).</summary>
+        public const int BomberHealth = 12;
         public const float BomberSpeed = 8f;
         public const float BomberAimTime = 2.5f;
         public const float BomberDamage = 6f;

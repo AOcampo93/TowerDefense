@@ -44,13 +44,14 @@ Assets/_Project/Scenes/Main.unity the only scene (AR and VR live in the same sce
 How to run:
 
 1. Open the project with Unity 6000.3.27f1 and Android Build Support installed.
-2. Add these free Unity Asset Store packages with Window > Package Manager > My Assets. Their license does not allow publishing them in this repository. Without them the game still runs, but the buildings near the tower are plain boxes, the streets are painted on the ground, the portals and explosions keep their simple shapes and the ships, the gun and the sky have no art.
+2. Add these Unity Asset Store packages with Window > Package Manager > My Assets. Their license does not allow publishing them in this repository. Without them the game still runs, but the buildings near the tower are plain boxes, the streets are painted on the ground, the portals and explosions keep their simple shapes, the ships, the gun and the sky have no art and there is no music.
    * Simple Building Pack (Polyeler)
    * Starfighter Set 01 (PolyAnarchy)
    * Midgard Skybox Prime (LaFinca): the game uses its panorama 13 Rose Cumulus Ocean Wide Cloud Garden 4K, imported as a 2D texture
    * Urban Road Pack Lite Clean and Weathered (Carthage Studio): also import the URP.unitypackage found inside it
    * FREE Low Poly Sci Fi Energy Blasters Demo Cosmic Retro (The PolynestLab)
    * Magic Effects FREE (Hovl Studio): convert its materials to URP with Window > Rendering > Render Pipeline Converter (Material Upgrade)
+   * Synthwave Music Volume I (AD Sounds): the game plays The Different, Final, Cold Water, Winds and Fly Above during the ride up and the fight
 3. Turn on developer mode on the Quest 3 and connect it to the computer with a USB cable.
 4. Go to File > Build Profiles > Android, choose the Quest 3 as Run Device and press Build And Run.
 5. To run the tests, open Window > General > Test Runner and run all EditMode tests.

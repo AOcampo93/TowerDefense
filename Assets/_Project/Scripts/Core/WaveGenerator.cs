@@ -5,7 +5,7 @@ namespace AlienInvaders.Core
 {
     /// <summary>
     /// Creates each wave from a few formulas, so difficulty grows smoothly: more portals,
-    /// more ships, faster ships and less time to react. A seed makes every run reproducible,
+    /// more ships (and more of them in the air at once), faster ships and less time to react. A seed makes every run reproducible,
     /// which allows a future "daily challenge" where everybody plays the same waves.
     /// </summary>
     public class WaveGenerator
@@ -43,7 +43,8 @@ namespace AlienInvaders.Core
             {
                 Number = n,
                 Portals = Math.Min(Balance.MaxPortals, 1 + step / 2), // integer division: 1,1,2,2,3,3,4...
-                ShipsPerPortal = 2 + n,
+                TotalShips = Balance.FirstWaveShips + Balance.ShipsAddedPerWave * step, // 3, 5, 7, 9...
+                MaxShipsInAir = Math.Min(Balance.MaxShipsInAir, Balance.FirstWaveShipsInAir + step / 2), // 3,3,4,4,5...
                 SpeedMultiplier = Math.Min(Balance.MaxSpeedMultiplier, 1f + Balance.SpeedIncreasePerWave * step),
                 AimTimeFighter = Math.Max(Balance.MinAimTime, Balance.FighterAimTime - Balance.AimTimeDecreasePerWave * step),
                 AimTimeBomber = Math.Max(Balance.MinAimTime, Balance.BomberAimTime - Balance.AimTimeDecreasePerWave * step),
