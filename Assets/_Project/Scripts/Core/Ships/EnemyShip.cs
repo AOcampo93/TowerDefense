@@ -6,7 +6,8 @@ namespace AlienInvaders.Core.Ships
     /// <summary>
     /// Base class of every alien ship (stretch challenge: inheritance with an abstract class).
     /// It owns the shared life cycle: shoot out of the portal, raid the city a few times (fly over the buildings and
-    /// fire down at them), then turn on the tower: fly to a firing station, aim (warning laser) and fire at it.
+    /// fire down at them), then turn on the tower: fly to a firing station, aim (warning laser) and fire at it. With
+    /// an Airspace, only a few ships of a wave attack the tower at once; the others keep raiding until there is room.
     /// Subclasses only decide HOW they get to a station and their stats.
     /// Ships fly like alien craft: in straight dashes that speed up and slow down smoothly, never
     /// swaying, and they come to rest exactly on their station. A dash never passes through the
@@ -25,6 +26,7 @@ namespace AlienInvaders.Core.Ships
 
         protected readonly Random Random;
         private readonly Airspace _airspace;
+        private readonly int _maxTowerAttackers;
         private float _phaseTimer;
         private float _currentSpeed;
         private bool _launched;
@@ -89,15 +91,16 @@ namespace AlienInvaders.Core.Ships
         public event Action<EnemyShip> OnDestroyed;
 
         /// <param name="spawnPosition">Portal position.</param>
-        /// <param name="cityRuns">Raids on the city before turning on the tower (WaveConfig.CityRuns).</param>
+        /// <param name="wave">Wave of the ship: raids on the city and how many ships may attack the tower at once.</param>
         /// <param name="random">Shared deterministic random generator (wave seed).</param>
         /// <param name="airspace">The other ships, to keep away from them (null: the ship flies alone).</param>
-        protected EnemyShip(Vector3 spawnPosition, int cityRuns, Random random, Airspace airspace)
+        protected EnemyShip(Vector3 spawnPosition, WaveConfig wave, Random random, Airspace airspace)
         {
             Position = spawnPosition;
             Random = random;
             _airspace = airspace;
-            CityRunsLeft = Math.Max(0, cityRuns);
+            CityRunsLeft = Math.Max(0, wave.CityRuns);
+            _maxTowerAttackers = wave.MaxTowerAttackers;
             ChooseNewStation();
         }
 
@@ -151,8 +154,11 @@ namespace AlienInvaders.Core.Ships
                         OnCityShot?.Invoke(this);
                         break;
                     }
-                    // Raid over: on to the next one, or to the tower after the last.
-                    CityRunsLeft--;
+                    // Raid over: on to the next one, or to the tower after the last (if the tower has room).
+                    if (CityRunsLeft > 1 || TowerHasRoom())
+                    {
+                        CityRunsLeft--;
+                    }
                     ChooseNewStation();
                     Phase = IsRaiding ? ShipPhase.Raiding : ShipPhase.Approaching;
                     break;
@@ -183,6 +189,12 @@ namespace AlienInvaders.Core.Ships
                 case ShipPhase.Destroyed:
                     break;
             }
+        }
+
+        // Without an Airspace (a ship flying alone) the tower is always free.
+        private bool TowerHasRoom()
+        {
+            return _airspace == null || _airspace.TowerAttackers < _maxTowerAttackers;
         }
 
         /// <summary>

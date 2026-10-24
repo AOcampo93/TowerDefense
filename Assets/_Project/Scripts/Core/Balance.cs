@@ -91,8 +91,8 @@ namespace AlienInvaders.Core
         // ---------- Waves ----------
         public const int MaxPortals = 4;
         public const float MaxSpeedMultiplier = 2f;
-        public const float SpeedIncreasePerWave = 0.08f;
-        public const float AimTimeDecreasePerWave = 0.12f;
+        public const float SpeedIncreasePerWave = 0.05f;
+        public const float AimTimeDecreasePerWave = 0.08f;
         public const float MinAimTime = 0.6f;
         public const float BomberRatioPerWave = 0.05f;
         public const float MaxBomberRatio = 0.4f;
@@ -104,6 +104,12 @@ namespace AlienInvaders.Core
         /// with time and skill keeps the tower standing longer.
         /// </summary>
         public const float MinWaveSeconds = 35f;
+
+        /// <summary>
+        /// Longest attack (seconds): when the sky is not cleared in time, the next wave opens its portals anyway and the
+        /// ships still flying stay. The difficulty keeps growing with time even for a player who cannot keep up.
+        /// </summary>
+        public const float MaxWaveSeconds = 45f;
         public const float PortalOpeningSeconds = 5f;
 
         /// <summary>Seconds between two ships coming out of the same portal, so each one has flown clear of it.</summary>
@@ -132,12 +138,20 @@ namespace AlienInvaders.Core
         /// Raids each ship makes on the city before it turns on the tower: 3 in the first three waves, 2 in the next
         /// three, then 1. Meanwhile the tower is safe, so a player who brings the ships down over the city keeps the
         /// tower whole, and the match has time to grow harder before the tower is in danger. In simulated matches with
-        /// the real rules, a player who never shoots lasts about 2.5 minutes of fight, a beginner about 5.5 and an
-        /// expert about 8 (plus the ride up).
+        /// the real rules, a player who never shoots lasts about 4 minutes of fight, a weak player 5, an average one 6
+        /// and an expert 9 (plus the ride up).
         /// </summary>
         public const int FirstWaveCityRuns = 3;
         public const int WavesPerCityRunLost = 3;
         public const int MinCityRuns = 1;
+
+        /// <summary>
+        /// Most ships attacking the tower at the same time: 1 in the first two waves, one more every two waves, up to
+        /// 4. A ship that finishes its raids while the tower is taken keeps raiding the city until there is room, so
+        /// the damage to the tower grows wave after wave instead of every ship of a big wave turning on it at once.
+        /// </summary>
+        public const int FirstWaveTowerAttackers = 1;
+        public const int MaxTowerAttackers = 4;
 
         /// <summary>Shots a ship fires down at the city on each raid, and the seconds between them.</summary>
         public const int CityShotsPerRun = 3;

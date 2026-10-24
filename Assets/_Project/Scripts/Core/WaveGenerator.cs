@@ -47,6 +47,7 @@ namespace AlienInvaders.Core
                 TotalShips = Balance.FirstWaveShips + Balance.ShipsAddedPerWave * step, // 4, 6, 8, 10...
                 MaxShipsInAir = Math.Min(Balance.MaxShipsInAir, Balance.FirstWaveShipsInAir + step), // 3, 4, 5... 8
                 CityRuns = Math.Max(Balance.MinCityRuns, Balance.FirstWaveCityRuns - step / Balance.WavesPerCityRunLost), // 3, 3, 3, 2, 2, 2, 1...
+                MaxTowerAttackers = Math.Min(Balance.MaxTowerAttackers, Balance.FirstWaveTowerAttackers + step / 2), // 1, 1, 2, 2, 3, 3, 4
                 SpeedMultiplier = Math.Min(Balance.MaxSpeedMultiplier, 1f + Balance.SpeedIncreasePerWave * step),
                 AimTimeFighter = Math.Max(Balance.MinAimTime, Balance.FighterAimTime - Balance.AimTimeDecreasePerWave * step),
                 AimTimeBomber = Math.Max(Balance.MinAimTime, Balance.BomberAimTime - Balance.AimTimeDecreasePerWave * step),

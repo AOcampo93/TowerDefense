@@ -5,8 +5,9 @@ namespace AlienInvaders.Core
     /// <summary>
     /// Rhythm of the game: when a wave is cleared there are a few seconds of peace, then the
     /// portals open (visible on the radar) and finally the ships attack. This calm moment lets
-    /// the player rest their arms and builds tension before every wave. A wave cleared quickly earns a longer calm
-    /// (Balance.MinWaveSeconds), so waves come with time, not faster for a better player.
+    /// the player rest their arms and builds tension before every wave. Waves come with time: a wave cleared quickly
+    /// earns a longer calm (Balance.MinWaveSeconds), and a wave that is not cleared in time (Balance.MaxWaveSeconds)
+    /// lets the next one open its portals while its own ships keep flying.
     /// </summary>
     public class WaveCycle
     {
@@ -49,10 +50,7 @@ namespace AlienInvaders.Core
                     _timer -= deltaTime;
                     if (_timer <= 0f)
                     {
-                        CurrentWave = _generator.Next();
-                        Phase = WavePhase.PortalsOpening;
-                        _timer = Balance.PortalOpeningSeconds;
-                        OnPortalsOpening?.Invoke(CurrentWave);
+                        OpenNextWave();
                     }
                     break;
 
@@ -74,8 +72,21 @@ namespace AlienInvaders.Core
                         Phase = WavePhase.Peace;
                         _timer = Math.Max(Balance.PeaceSeconds, Balance.MinWaveSeconds - _attackSeconds);
                     }
+                    else if (_attackSeconds >= Balance.MaxWaveSeconds)
+                    {
+                        // Too slow: the next wave comes anyway and the ships still flying stay.
+                        OpenNextWave();
+                    }
                     break;
             }
+        }
+
+        private void OpenNextWave()
+        {
+            CurrentWave = _generator.Next();
+            Phase = WavePhase.PortalsOpening;
+            _timer = Balance.PortalOpeningSeconds;
+            OnPortalsOpening?.Invoke(CurrentWave);
         }
 
         /// <summary>Back to the first calm phase before wave 1.</summary>

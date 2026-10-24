@@ -40,6 +40,16 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void TowerAttackers_GrowEveryTwoWaves_UpToFour()
+        {
+            int[] attackers = { 1, 1, 2, 2, 3, 3, 4, 4, 4 };
+            for (int n = 1; n <= attackers.Length; n++)
+            {
+                Assert.AreEqual(attackers[n - 1], WaveGenerator.Build(n, 1).MaxTowerAttackers, $"tower attackers in wave {n}");
+            }
+        }
+
+        [Test]
         public void AimTime_NeverBelowMinimum()
         {
             WaveConfig late = WaveGenerator.Build(50, 1);
@@ -126,9 +136,27 @@ namespace AlienInvaders.Tests
 
             cycle.Tick(cycle.PhaseTimeLeft + 0.01f, 0);
             cycle.Tick(Balance.PortalOpeningSeconds + 0.01f, 0);
-            cycle.Tick(60f, 3);
+            cycle.Tick(Balance.MaxWaveSeconds - 1f, 3);
             cycle.Tick(0f, 0); // cleared after a long fight
             Assert.AreEqual(Balance.PeaceSeconds, cycle.PhaseTimeLeft, 0.01f);
+        }
+
+        [Test]
+        public void SlowWave_LetsTheNextOneIn_WhileItsShipsKeepFlying()
+        {
+            var cycle = new WaveCycle(new WaveGenerator(1));
+            int cleared = 0;
+            cycle.OnWaveCleared += _ => cleared++;
+            cycle.Tick(Balance.PeaceSeconds + 0.01f, 0);
+            cycle.Tick(Balance.PortalOpeningSeconds + 0.01f, 0);
+            Assert.AreEqual(1, cycle.CurrentWave.Number);
+            for (float time = 0f; time < Balance.MaxWaveSeconds + 0.5f; time += 0.1f)
+            {
+                cycle.Tick(0.1f, 2); // two ships never brought down
+            }
+            Assert.AreEqual(WavePhase.PortalsOpening, cycle.Phase);
+            Assert.AreEqual(2, cycle.CurrentWave.Number);
+            Assert.AreEqual(0, cleared);
         }
     }
 

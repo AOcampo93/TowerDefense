@@ -8,7 +8,8 @@ namespace AlienInvaders.Core.Ships
     /// The sky shared by the ships of a match. Before a ship picks where to stop next, it asks how free each possible
     /// way is, so ships keep their distance (Balance.ShipSeparation) instead of stopping inside each other or flying
     /// through each other. Portals also ask it before releasing a ship, so a new ship never comes out on top of the
-    /// last one. It only knows where the ships are and where they are going; it never moves them.
+    /// last one, and a ship done with the city asks how many are already attacking the tower. It only knows where
+    /// the ships are and where they are going; it never moves them.
     /// </summary>
     public class Airspace
     {
@@ -21,6 +22,23 @@ namespace AlienInvaders.Core.Ships
 
         /// <summary>Ships currently registered.</summary>
         public int Count => _ships.Count;
+
+        /// <summary>Ships alive that are done with the city and attack the tower.</summary>
+        public int TowerAttackers
+        {
+            get
+            {
+                int count = 0;
+                foreach (EnemyShip ship in _ships)
+                {
+                    if (ship.IsAlive && !ship.IsRaiding)
+                    {
+                        count++;
+                    }
+                }
+                return count;
+            }
+        }
 
         public void Add(EnemyShip ship)
         {

@@ -142,6 +142,55 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void OnlyAFewShips_AttackTheTowerAtOnce_TheRestKeepRaiding()
+        {
+            WaveConfig wave = WaveGenerator.Build(3, 7);
+            wave.CityRuns = 1;
+            wave.MaxTowerAttackers = 2;
+            var random = new Random(7);
+            var airspace = new Airspace();
+            var ships = new System.Collections.Generic.List<EnemyShip>();
+            for (int i = 0; i < 6; i++)
+            {
+                EnemyShip ship = ShipFactory.Create(ShipType.Fighter, EnemyShip.FromAzimuth(i * 60f, 160f, 20f), wave, random, airspace);
+                airspace.Add(ship);
+                ships.Add(ship);
+            }
+            int mostAttackers = 0;
+            int cityShotsWhileFull = 0;
+            foreach (EnemyShip ship in ships)
+            {
+                ship.OnCityShot += _ => cityShotsWhileFull += airspace.TowerAttackers == 2 ? 1 : 0;
+            }
+            for (int i = 0; i < 4000; i++)
+            {
+                foreach (EnemyShip ship in ships)
+                {
+                    ship.Tick(0.05f);
+                }
+                Assert.LessOrEqual(airspace.TowerAttackers, 2);
+                mostAttackers = Math.Max(mostAttackers, airspace.TowerAttackers);
+                if (i == 2000)
+                {
+                    // The player brings the two attackers down: two raiders take their place.
+                    foreach (EnemyShip ship in ships.ToArray())
+                    {
+                        if (!ship.IsRaiding)
+                        {
+                            ship.Hit(100);
+                            airspace.Remove(ship);
+                            ships.Remove(ship);
+                        }
+                    }
+                    Assert.AreEqual(0, airspace.TowerAttackers);
+                }
+            }
+            Assert.AreEqual(2, mostAttackers);
+            Assert.AreEqual(2, airspace.TowerAttackers, "raiders never took the place of the attackers brought down");
+            Assert.Greater(cityShotsWhileFull, 0, "ships waiting for the tower stopped raiding the city");
+        }
+
+        [Test]
         public void Ships_InASharedSky_KeepTheirDistance()
         {
             // Two minutes of a busy wave: ships come out of the portals whenever there is room, as in the game.

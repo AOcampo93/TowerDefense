@@ -20,6 +20,9 @@ namespace AlienInvaders.Core
 
         /// <summary>Raids on the city each ship makes before it turns on the tower.</summary>
         public int CityRuns;
+
+        /// <summary>Most ships of this wave attacking the tower at once; the others keep raiding the city.</summary>
+        public int MaxTowerAttackers;
         public float SpeedMultiplier;
         public float AimTimeFighter;
         public float AimTimeBomber;
