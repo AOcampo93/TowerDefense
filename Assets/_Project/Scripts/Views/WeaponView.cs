@@ -5,9 +5,9 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// Greybox look and feel of the blaster, a heavy gun almost half an arm long. The gun appears when the elevator
-    /// opens, every bolt of a burst draws a thick cyan beam with a white hot core, the energy coils glow with the heat
-    /// (cyan, then orange, then red) and blink while the weapon is locked.
+    /// Look and feel of the blaster, a big retro ray gun almost half an arm long (Cosmic Retro blaster model). The gun
+    /// appears when the elevator opens, every bolt of a burst draws a thick cyan beam with a white hot core, the energy
+    /// coils around its muzzle glow with the heat (cyan, then orange, then red) and blink while the weapon is locked.
     /// The heat is shown on the gun itself instead of a HUD, so the player never looks away from the ships.
     /// Haptics: a firm tick per shot, a full strength kick when the weapon overheats and then a pulse on every blink
     /// of the coils until the lock ends, so the hand knows the weapon is still locked without looking at it.
