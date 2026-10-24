@@ -22,6 +22,8 @@ namespace AlienInvaders.Views
         [Header("Cloud atlas")]
         [Tooltip("Cells of the cloud atlas: columns and rows. Cells are numbered from the bottom left, row by row.")]
         [SerializeField] private Vector2Int _atlasCells = new Vector2Int(4, 2);
+        [Tooltip("How many cells hold a cloud, counted from the first; the cells after them are empty.")]
+        [SerializeField] private int _cloudShapes = 8;
         [Tooltip("Cells with wide, flat clouds, used for the low band on the horizon.")]
         [SerializeField] private int[] _bandShapes = { 0, 1, 2 };
 
@@ -75,7 +77,7 @@ namespace AlienInvaders.Views
             for (int c = 0; c < _clouds; c++)
             {
                 float azimuth = (c + Lerp(-0.45f, 0.45f, Next())) * 360f / _clouds;
-                clouds.Add(NewCloud(azimuth, _distance, _baseHeight, _cloudSize, _random.Next(_atlasCells.x * _atlasCells.y)));
+                clouds.Add(NewCloud(azimuth, _distance, _baseHeight, _cloudSize, _random.Next(Mathf.Min(_cloudShapes, _atlasCells.x * _atlasCells.y))));
             }
             // Transparent pictures must be drawn from the farthest to the nearest; the player is always at the center.
             clouds.Sort((a, b) => b.Distance.CompareTo(a.Distance));

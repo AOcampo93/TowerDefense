@@ -256,7 +256,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.CloudRingView
   _seed: 31
-  _atlasCells: {x: 4, y: 2}
+  _atlasCells: {x: 3, y: 2}
+  _cloudShapes: 5
   _bandShapes: 000000000100000002000000
   _clouds: 34
   _distance: {x: 620, y: 880}
