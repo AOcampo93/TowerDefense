@@ -99,18 +99,28 @@ namespace AlienInvaders.Core
         public const float FighterSpeed = 16f;
         public const float FighterAimTime = 1.5f;
         public const float FighterDamage = 2f;
+        /// <summary>How fast a fighter speeds up and slows down (m/s²): agile, but never swaying.</summary>
+        public const float FighterAcceleration = 9f;
+        /// <summary>Chance that a fighter splits its way to the next station into two straight dashes.</summary>
+        public const float FighterDoglegChance = 0.6f;
+        /// <summary>How far sideways (meters) the turning point of a fighter's two dashes may be.</summary>
+        public const float FighterDoglegOffset = 18f;
 
         /// <summary>Bolts a bomber takes (about two seconds of burst).</summary>
         public const int BomberHealth = 20;
         public const float BomberSpeed = 8f;
         public const float BomberAimTime = 2.5f;
         public const float BomberDamage = 6f;
+        /// <summary>A bomber is heavy: it speeds up and slows down slowly (m/s²).</summary>
+        public const float BomberAcceleration = 2.5f;
 
         /// <summary>
         /// Flight zone around the tower (meters, relative to the player platform). The ships are huge (a fighter is
         /// about 26 m across, a bomber about 48 m long), so they keep their distance to fit in view.
         /// </summary>
         public const float MinFlightRadius = 45f;
+        /// <summary>No straight dash passes closer than this to the tower's axis (meters): ships fly around the tower.</summary>
+        public const float FlightClearance = 35f;
         public const float MaxFlightRadius = 95f;
         public const float MinFlightHeight = -20f;
         public const float MaxFlightHeight = 35f;

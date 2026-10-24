@@ -16,14 +16,16 @@ namespace AlienInvaders.Core.Ships
             Health = Balance.BomberHealth;
             MaxHealth = Health;
             Speed = Balance.BomberSpeed * wave.SpeedMultiplier;
+            Acceleration = Balance.BomberAcceleration * wave.SpeedMultiplier;
             DamageToTower = Balance.BomberDamage;
             AimTime = wave.AimTimeBomber;
         }
 
-        /// <summary>Straight-line flight: predictable, but hard to stop in time.</summary>
-        protected override Vector3 ComputeNextPosition(Vector3 current, Vector3 destination, float deltaTime)
+        /// <summary>One slow straight glide, heavy to start and to stop (it only turns to go around the tower):
+        /// predictable, but hard to stop in time.</summary>
+        protected override bool PickTurningPoint(Vector3 from, Vector3 to, out Vector3 turningPoint)
         {
-            return MoveTowards(current, destination, Speed * deltaTime);
+            return AroundTheTower(from, to, out turningPoint);
         }
     }
 }

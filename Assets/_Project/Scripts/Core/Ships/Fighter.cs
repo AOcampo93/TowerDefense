@@ -4,16 +4,12 @@ using System.Numerics;
 namespace AlienInvaders.Core.Ships
 {
     /// <summary>
-    /// Fast, fragile ship that zigzags on its way to the station, making it harder to hit.
+    /// Fast, fragile ship that darts like an alien craft: often it splits its way to the station into two straight
+    /// dashes, stopping for an instant at a turning point off to one side, so it is hard to lead with the weapon.
     /// Low damage, but it appears in large numbers.
     /// </summary>
     public class Fighter : EnemyShip
     {
-        private const float ZigzagAmplitude = 6f; // meters
-        private const float ZigzagFrequency = 1.5f; // oscillations per second
-
-        private float _time;
-
         public Fighter(Vector3 spawnPosition, WaveConfig wave, Random random)
             : base(spawnPosition, random)
         {
@@ -21,38 +17,34 @@ namespace AlienInvaders.Core.Ships
             Health = Balance.FighterHealth;
             MaxHealth = Health;
             Speed = Balance.FighterSpeed * wave.SpeedMultiplier;
+            Acceleration = Balance.FighterAcceleration * wave.SpeedMultiplier;
             DamageToTower = Balance.FighterDamage;
             AimTime = wave.AimTimeFighter;
-            _time = (float)random.NextDouble() * 10f; // so fighters do not zigzag in sync
         }
 
         /// <summary>
-        /// Moves forward and adds a sideways sine offset that fades out near the station,
-        /// so the ship still stops exactly where it aims.
+        /// Around the tower when it must; otherwise, often, a turning point beside the middle of the way, always on
+        /// the side away from the tower, so the two dashes make a wide V.
         /// </summary>
-        protected override Vector3 ComputeNextPosition(Vector3 current, Vector3 destination, float deltaTime)
+        protected override bool PickTurningPoint(Vector3 from, Vector3 to, out Vector3 turningPoint)
         {
-            _time += deltaTime;
-
-            Vector3 forward = MoveTowards(current, destination, Speed * deltaTime);
-            Vector3 direction = destination - current;
-            float distance = direction.Length();
-            if (distance < 0.0001f)
+            if (AroundTheTower(from, to, out turningPoint))
             {
-                return destination;
+                return true;
             }
-
-            // Sideways vector on the horizontal plane (perpendicular to the flight direction).
-            Vector3 side = Vector3.Normalize(Vector3.Cross(direction / distance, Vector3.UnitY));
-            if (float.IsNaN(side.X))
+            Vector3 middle = (from + to) * 0.5f;
+            Vector3 side = Vector3.Cross(to - from, Vector3.UnitY);
+            if (Random.NextDouble() >= Balance.FighterDoglegChance || side.LengthSquared() < 1f)
             {
-                return forward; // flying straight up or down: no zigzag
+                return false;
             }
-
-            float fade = Math.Min(1f, distance / 20f);
-            float offsetSpeed = (float)Math.Cos(_time * ZigzagFrequency * 2.0 * Math.PI)
-                                * ZigzagAmplitude * ZigzagFrequency * fade;
-            return forward + side * offsetSpeed * deltaTime;
+            side = Vector3.Normalize(side);
+            if (side.X * middle.X + side.Z * middle.Z < 0f)
+            {
+                side = -side;
+            }
+            turningPoint = middle + side * Lerp(0.3f, 1f, (float)Random.NextDouble()) * Balance.FighterDoglegOffset;
+            return true;
         }
     }
 }

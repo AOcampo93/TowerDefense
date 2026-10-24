@@ -15,8 +15,8 @@ namespace AlienInvaders.Game
     public class ShipController : MonoBehaviour, IShootable
     {
         [SerializeField] private ShipView _view;
-        [Tooltip("Degrees per second the ship turns towards where it flies (or aims).")]
-        [SerializeField] private float _turnSpeed = 240f;
+        [Tooltip("Seconds the ship takes to turn most of the way towards where it flies (or aims): slow, smooth turns.")]
+        [SerializeField] private float _turnSeconds = 0.6f;
         [Tooltip("Seconds between the shots a flying ship fires down at the city (random in this range).")]
         [SerializeField] private Vector2 _cityShotInterval = new Vector2(7f, 14f);
         [Tooltip("Shortest time between two hit explosions on this ship (a burst lands ten bolts per second).")]
@@ -83,11 +83,12 @@ namespace AlienInvaders.Game
             UpdateCityShots();
 
             // Nose first while flying; while aiming the nose points at the tower, so the warning laser comes out of it.
+            // The ship eases into each new heading, so it never twitches.
             Vector3 look = Ship.Phase == ShipPhase.Aiming ? Ship.TargetPoint.ToUnity() - current : current - previous;
             if (look.sqrMagnitude > 0.000001f)
             {
-                transform.localRotation = Quaternion.RotateTowards(
-                    transform.localRotation, Quaternion.LookRotation(look), _turnSpeed * Time.deltaTime);
+                transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.LookRotation(look),
+                    1f - Mathf.Exp(-Time.deltaTime / Mathf.Max(0.01f, _turnSeconds)));
             }
         }
 

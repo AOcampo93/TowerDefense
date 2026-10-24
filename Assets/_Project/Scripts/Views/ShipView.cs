@@ -3,8 +3,9 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// Greybox look of an enemy ship. The models have no rig, so the life comes from code: the body bobs and banks
-    /// into its turns. While the ship aims, a thin red warning laser grows thicker until the shot (design pillar:
+    /// Look of an enemy ship. Each time a ship leaves a portal it wears one of several hull models, so a wave is not a
+    /// row of clones. The ships fly like alien craft: no bobbing and no banking, they glide level and turn smoothly.
+    /// While the ship aims, a thin red warning laser grows thicker until the shot (design pillar:
     /// the player is always warned); the shot itself is a short, thick red beam. A health bar floats over the ship,
     /// always turned towards the player, and shrinks from green to red as the bolts land. Sounds are 3D, so a ship
     /// charging behind the player is heard behind them: a quiet engine loop while flying and a charging buzz whose
@@ -12,19 +13,13 @@ namespace AlienInvaders.Views
     /// </summary>
     public class ShipView : MonoBehaviour
     {
-        [Tooltip("Meshes of the ship. Bobbing and banking move this child, never the ship itself.")]
-        [SerializeField] private Transform _model;
-        [Tooltip("Where the lasers start.")]
-        [SerializeField] private Transform _nose;
+        [Tooltip("Hull models; one of them is shown each time the ship leaves a portal. Each has a child named Nose " +
+                 "where the lasers start.")]
+        [SerializeField] private GameObject[] _hulls;
         [SerializeField] private LineRenderer _aimLaser;
         [SerializeField] private LineRenderer _fireLaser;
 
-        [Header("Feel")]
-        [SerializeField] private float _bobHeight = 0.15f;
-        [SerializeField] private float _bobSpeed = 2f;
-        [Tooltip("Degrees of roll for every degree per second of turning.")]
-        [SerializeField] private float _bankPerTurnRate = 0.3f;
-        [SerializeField] private float _maxBank = 40f;
+        [Header("Lasers")]
         [SerializeField] private float _aimWidthStart = 0.03f;
         [SerializeField] private float _aimWidthEnd = 0.12f;
         [SerializeField] private float _fireWidth = 0.35f;
@@ -52,6 +47,8 @@ namespace AlienInvaders.Views
 
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
+        private Transform[] _noses;
+        private Transform _nose;
         private Vector3 _aimTarget;
         private Vector3 _fireTarget;
         private MaterialPropertyBlock _healthBlock;
@@ -59,14 +56,16 @@ namespace AlienInvaders.Views
         private float _aimSeconds;
         private float _aimTimer;
         private float _fireTimer;
-        private float _bank;
-        private float _lastYaw;
-        private float _bobOffset;
 
         private void Awake()
         {
             _healthBlock = new MaterialPropertyBlock();
             _fillScale = _healthFill.localScale;
+            _noses = new Transform[_hulls.Length];
+            for (int i = 0; i < _hulls.Length; i++)
+            {
+                _noses[i] = _hulls[i].transform.Find("Nose");
+            }
         }
 
         /// <summary>Resets the look when the ship leaves a portal (pooled ships are reused).</summary>
@@ -74,10 +73,13 @@ namespace AlienInvaders.Views
         {
             HideLasers();
             ShowDamage(1f);
-            _bank = 0f;
-            _lastYaw = transform.eulerAngles.y;
-            // So ships of the same wave do not bob (or hum) in sync.
-            _bobOffset = Random.value * 10f;
+            int hull = Random.Range(0, _hulls.Length);
+            for (int i = 0; i < _hulls.Length; i++)
+            {
+                _hulls[i].SetActive(i == hull);
+            }
+            _nose = _noses[hull];
+            // So ships of the same wave do not hum in sync.
             _engine.clip = _sounds.ShipEngine;
             _engine.loop = true;
             _engine.pitch = Random.Range(0.9f, 1.1f);
@@ -137,7 +139,6 @@ namespace AlienInvaders.Views
         private void LateUpdate()
         {
             float dt = Time.deltaTime;
-            AnimateBody(dt);
             // The bar always faces the player on top of the tower, whatever way the ship flies.
             Vector3 viewer = transform.parent.TransformPoint(_viewer);
             _healthBar.rotation = Quaternion.LookRotation(_healthBar.position - viewer, Vector3.up);
@@ -161,20 +162,6 @@ namespace AlienInvaders.Views
                     _fireLaser.enabled = false;
                 }
             }
-        }
-
-        private void AnimateBody(float dt)
-        {
-            // Bank into turns like an aircraft: turning right (yaw growing) lowers the right wing.
-            float yaw = transform.eulerAngles.y;
-            float turnRate = dt > 0f ? Mathf.DeltaAngle(_lastYaw, yaw) / dt : 0f;
-            _lastYaw = yaw;
-            float targetBank = Mathf.Clamp(-turnRate * _bankPerTurnRate, -_maxBank, _maxBank);
-            _bank = Mathf.Lerp(_bank, targetBank, 1f - Mathf.Exp(-5f * dt));
-
-            float bob = Mathf.Sin((Time.time + _bobOffset) * _bobSpeed) * _bobHeight;
-            _model.localPosition = new Vector3(0f, bob, 0f);
-            _model.localRotation = Quaternion.Euler(0f, 0f, _bank);
         }
 
         private void SetLaserPoints(LineRenderer laser, Vector3 target)

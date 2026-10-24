@@ -55,6 +55,36 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
+        public void Ships_GlideSmoothly_AndNeverFlyThroughTheTower()
+        {
+            const float Step = 0.02f;
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                foreach (ShipType type in new[] { ShipType.Fighter, ShipType.Bomber })
+                {
+                    Vector3 portal = EnemyShip.FromAzimuth(seed * 47f, 160f, 30f);
+                    EnemyShip ship = ShipFactory.Create(type, portal, WaveGenerator.Build(3, seed), new Random(seed));
+                    Vector3 previous = ship.Position;
+                    float previousSpeed = 0f;
+                    float closest = float.MaxValue;
+                    // A minute of flight: several stations, shots and turns.
+                    for (int i = 0; i < 3000; i++)
+                    {
+                        ship.Tick(Step);
+                        float speed = Vector3.Distance(ship.Position, previous) / Step;
+                        // Speed changes no faster than the ship's acceleration: no sudden starts, stops or swerves (the
+                        // margin covers the last step before a stop, which ends short on the station).
+                        Assert.LessOrEqual(Math.Abs(speed - previousSpeed), ship.Acceleration * Step * 1.5f + 0.5f);
+                        closest = Math.Min(closest, new Vector2(ship.Position.X, ship.Position.Z).Length());
+                        previous = ship.Position;
+                        previousSpeed = speed;
+                    }
+                    Assert.Greater(closest, 25f, $"{type} with seed {seed} flew too close to the tower");
+                }
+            }
+        }
+
+        [Test]
         public void Ship_FiresAfterAimTime()
         {
             EnemyShip ship = NewFighter();

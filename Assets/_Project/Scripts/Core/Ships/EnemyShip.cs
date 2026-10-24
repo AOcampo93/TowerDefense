@@ -6,7 +6,10 @@ namespace AlienInvaders.Core.Ships
     /// <summary>
     /// Base class of every alien ship (stretch challenge: inheritance with an abstract class).
     /// It owns the shared life cycle: leave the portal, fly to a firing station, aim (warning
-    /// laser) and fire at the tower. Subclasses only decide HOW they fly and their stats.
+    /// laser) and fire at the tower. Subclasses only decide HOW they get to a station and their stats.
+    /// Ships fly like alien craft: in straight dashes that speed up and slow down smoothly, never
+    /// swaying, and they come to rest exactly on their station. A dash never passes through the
+    /// tower: when the straight way would, the ship turns at a point beside it.
     ///
     /// Coordinates: tower center at the origin, X = East, Y = Up, Z = North (same as Unity).
     /// </summary>
@@ -17,6 +20,11 @@ namespace AlienInvaders.Core.Ships
 
         protected readonly Random Random;
         private float _phaseTimer;
+        private float _currentSpeed;
+        // The way to the current destination, with its optional turning point.
+        private Vector3 _wayEnd;
+        private Vector3 _turningPoint;
+        private bool _hasTurningPoint;
 
         public ShipType Type { get; protected set; }
         public int Health { get; protected set; }
@@ -24,6 +32,9 @@ namespace AlienInvaders.Core.Ships
         /// <summary>Health when the ship came out of the portal (for its health bar).</summary>
         public int MaxHealth { get; protected set; }
         public float Speed { get; protected set; }
+
+        /// <summary>How fast the ship speeds up and slows down (m/s²).</summary>
+        public float Acceleration { get; protected set; }
         public float DamageToTower { get; protected set; }
         public float AimTime { get; protected set; }
         public ShipPhase Phase { get; private set; } = ShipPhase.Emerging;
@@ -65,10 +76,10 @@ namespace AlienInvaders.Core.Ships
         }
 
         /// <summary>
-        /// Movement that is specific to each ship type (polymorphism): returns the next
-        /// position on the way to the station.
+        /// How each ship type gets to a new destination (polymorphism): straight, or in two dashes that stop at a
+        /// turning point. Returns false to fly straight there.
         /// </summary>
-        protected abstract Vector3 ComputeNextPosition(Vector3 current, Vector3 destination, float deltaTime);
+        protected abstract bool PickTurningPoint(Vector3 from, Vector3 to, out Vector3 turningPoint);
 
         /// <summary>Advances the shared life cycle. Called every frame by the Unity layer.</summary>
         public virtual void Tick(float deltaTime)
@@ -77,7 +88,7 @@ namespace AlienInvaders.Core.Ships
             {
                 case ShipPhase.Emerging:
                     // Drift slowly out of the portal towards the station.
-                    Position = MoveTowards(Position, Station, Speed * 0.3f * deltaTime);
+                    Position = FlyTowards(Station, Speed * 0.3f, deltaTime);
                     _phaseTimer -= deltaTime;
                     if (_phaseTimer <= 0f)
                     {
@@ -86,7 +97,7 @@ namespace AlienInvaders.Core.Ships
                     break;
 
                 case ShipPhase.Approaching:
-                    Position = ComputeNextPosition(Position, Station, deltaTime);
+                    Position = FlyTowards(Station, Speed, deltaTime);
                     if (Vector3.Distance(Position, Station) <= ArrivalDistance)
                     {
                         Phase = ShipPhase.Aiming;
@@ -96,6 +107,8 @@ namespace AlienInvaders.Core.Ships
                     break;
 
                 case ShipPhase.Aiming:
+                    // The last meters to the station, slowing down to a stop while the warning laser grows.
+                    Position = FlyTowards(Station, Speed, deltaTime);
                     _phaseTimer -= deltaTime;
                     if (_phaseTimer <= 0f)
                     {
@@ -173,6 +186,55 @@ namespace AlienInvaders.Core.Ships
                 case TowerSide.East: return new Vector3(w, height, Clamp(dir.Z * w * 2f, -w, w));
                 default: return new Vector3(-w, height, Clamp(dir.Z * w * 2f, -w, w));
             }
+        }
+
+        // Next position on the way to the destination: through the turning point first, if the way has one.
+        private Vector3 FlyTowards(Vector3 destination, float maxSpeed, float deltaTime)
+        {
+            if (destination != _wayEnd)
+            {
+                _wayEnd = destination;
+                _hasTurningPoint = PickTurningPoint(Position, destination, out _turningPoint);
+            }
+            if (_hasTurningPoint)
+            {
+                Vector3 next = Glide(Position, _turningPoint, maxSpeed, deltaTime);
+                _hasTurningPoint = Vector3.Distance(next, _turningPoint) > 0.05f;
+                return next;
+            }
+            return Glide(Position, destination, maxSpeed, deltaTime);
+        }
+
+        // One straight dash: the ship speeds up gently up to maxSpeed and slows down in time to stop exactly on the
+        // destination (the fastest speed that can still stop in the distance left is sqrt(2 · a · d)).
+        private Vector3 Glide(Vector3 current, Vector3 destination, float maxSpeed, float deltaTime)
+        {
+            float distance = Vector3.Distance(current, destination);
+            float canStop = (float)Math.Sqrt(2f * Acceleration * distance);
+            _currentSpeed = Math.Min(_currentSpeed + Acceleration * deltaTime, Math.Min(maxSpeed, canStop));
+            return MoveTowards(current, destination, _currentSpeed * deltaTime);
+        }
+
+        /// <summary>
+        /// When the straight way from one point to another would pass too close to the tower (seen from above), gives
+        /// a turning point beside the tower at the edge of the flight zone, so the ship goes around it in two dashes.
+        /// </summary>
+        protected static bool AroundTheTower(Vector3 from, Vector3 to, out Vector3 turningPoint)
+        {
+            var start = new Vector2(from.X, from.Z);
+            Vector2 way = new Vector2(to.X, to.Z) - start;
+            float t = way.LengthSquared() > 0.01f ? Clamp(-Vector2.Dot(start, way) / way.LengthSquared(), 0f, 1f) : 0f;
+            Vector2 closest = start + way * t;
+            if (closest.Length() >= Balance.FlightClearance)
+            {
+                turningPoint = to;
+                return false;
+            }
+            // Out from the tower on the side the way already leans to (straight through: either side).
+            Vector2 outward = closest.Length() > 0.1f ? Vector2.Normalize(closest) : Vector2.Normalize(new Vector2(way.Y, -way.X));
+            float height = Lerp(from.Y, to.Y, t);
+            turningPoint = new Vector3(outward.X * Balance.MinFlightRadius, height, outward.Y * Balance.MinFlightRadius);
+            return true;
         }
 
         /// <summary>Moves a point towards a target by at most maxDistance.</summary>
