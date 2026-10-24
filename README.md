@@ -47,7 +47,7 @@ How to run:
 2. Add these free Unity Asset Store packages with Window > Package Manager > My Assets. Their license does not allow publishing them in this repository. Without them the game still runs, but the buildings near the tower are plain boxes, the streets are painted on the ground, the portals and explosions keep their simple shapes and the ships, the gun and the sky have no art.
    * Simple Building Pack (Polyeler)
    * Starfighter Set 01 (PolyAnarchy)
-   * Midgard Skybox Prime (LaFinca): the game uses its panorama 04 Prismatic Dusk Rift Quiet Cloud Sea 4K, imported as a 2D texture
+   * Midgard Skybox Prime (LaFinca): the game uses its panorama 13 Rose Cumulus Ocean Wide Cloud Garden 4K, imported as a 2D texture
    * Urban Road Pack Lite Clean and Weathered (Carthage Studio): also import the URP.unitypackage found inside it
    * FREE Low Poly Sci Fi Energy Blasters Demo Cosmic Retro (The PolynestLab)
    * Magic Effects FREE (Hovl Studio): convert its materials to URP with Window > Rendering > Render Pipeline Converter (Material Upgrade)
