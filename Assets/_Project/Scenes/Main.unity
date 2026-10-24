@@ -26409,6 +26409,45 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c04f200b805d64bc38ef82a94a4f7ae0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.CityGenerator
+  _roadMaterial: {fileID: 2100000, guid: 0bb126dd0330a48c18978bcab6bcf19b, type: 2}
+  _roadLift: 0.1
+  _fourLaneWidth: 12
+  _crosswalkLength: 2
+  _sidewalkPiece:
+    Origin: {x: 0.2178, y: 0.9068}
+    Along: {x: 0, y: 0.0821}
+    Across: {x: -0.0202, y: 0}
+    Width: 2
+    Length: 8
+    Average: {r: 0.48, g: 0.38, b: 0.28, a: 1}
+  _twoLanePiece:
+    Origin: {x: 0.7219, y: 0.9345}
+    Along: {x: -0.0822, y: 0}
+    Across: {x: 0, y: -0.1644}
+    Width: 16.27
+    Length: 8
+    Average: {r: 0.46, g: 0.46, b: 0.455, a: 1}
+  _fourLanePiece:
+    Origin: {x: 0.0822, y: 0.856}
+    Along: {x: -0.0822, y: 0}
+    Across: {x: 0, y: -0.1644}
+    Width: 16.27
+    Length: 8
+    Average: {r: 0.46, g: 0.46, b: 0.455, a: 1}
+  _crosswalkPiece:
+    Origin: {x: 0.8832, y: 0.2768}
+    Along: {x: -0.0205, y: 0}
+    Across: {x: 0, y: -0.1643}
+    Width: 16.27
+    Length: 2.03
+    Average: {r: 0.76, g: 0.74, b: 0.65, a: 1}
+  _plainAsphaltPiece:
+    Origin: {x: 0.7168, y: 0.9261}
+    Along: {x: -0.0719, y: 0}
+    Across: {x: 0, y: -0.0606}
+    Width: 6
+    Length: 7
+    Average: {r: 0.455, g: 0.45, b: 0.445, a: 1}
   _root: {fileID: 1422714925}
   _seed: 2026
   _groundTop: -200

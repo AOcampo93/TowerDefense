@@ -9,7 +9,8 @@ namespace AlienInvaders.Views
     /// The layout tries to look like a real city instead of a chess board: two diagonal avenues cut it into four
     /// districts, each district has its own street grid turned at its own angle, and the blocks are rectangles of
     /// irregular sizes split into lots of different widths. The streets are also painted into a map texture that the
-    /// ground shader uses, so the asphalt and its orange street lights always match the buildings.
+    /// ground shader uses, so the asphalt and its orange street lights always match the buildings. With the road pack in
+    /// the project, the streets are also drawn as strips of its asphalt, sidewalks and crosswalks (CityGenerator.Roads).
     /// The city is drawn like a flat night illustration (Building and Streets shaders): each building gets its own
     /// style (neon color, neon outline, glass tower) packed in its vertex color, and each face carries its size in
     /// meters in its UVs for the windows and outlines.
@@ -22,7 +23,7 @@ namespace AlienInvaders.Views
     /// It lives on an object that is active from the start, so the city is built while the game loads and not in
     /// the middle of the elevator ride (the city's own root stays hidden until VR).
     /// </summary>
-    public class CityGenerator : MonoBehaviour
+    public partial class CityGenerator : MonoBehaviour
     {
         private static readonly int CityMapId = Shader.PropertyToID("_AI_CityMap");
         private static readonly int CityMapHalfId = Shader.PropertyToID("_AI_CityMapHalf");
@@ -203,7 +204,7 @@ namespace AlienInvaders.Views
             }
         }
 
-        /// <summary>Lays out the streets, then creates the buildings, the skyscrapers, the smoke and the street map.</summary>
+        /// <summary>Lays out the streets, then creates the buildings, the skyscrapers, the smoke, the street map and the roads.</summary>
         public void Generate()
         {
             _random = new System.Random(_seed);
@@ -256,6 +257,7 @@ namespace AlienInvaders.Views
                 StaticBatchingUtility.Combine(_detailedRoot.gameObject);
             }
             PaintStreetMap();
+            BuildRoads();
         }
 
         // ---------------------------------------------------------------- modeled buildings near the tower
