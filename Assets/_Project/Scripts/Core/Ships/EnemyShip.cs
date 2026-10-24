@@ -5,8 +5,9 @@ namespace AlienInvaders.Core.Ships
 {
     /// <summary>
     /// Base class of every alien ship (stretch challenge: inheritance with an abstract class).
-    /// It owns the shared life cycle: leave the portal, fly to a firing station, aim (warning
-    /// laser) and fire at the tower. Subclasses only decide HOW they get to a station and their stats.
+    /// It owns the shared life cycle: shoot out of the portal, raid the city a few times (fly over the buildings and
+    /// fire down at them), then turn on the tower: fly to a firing station, aim (warning laser) and fire at it.
+    /// Subclasses only decide HOW they get to a station and their stats.
     /// Ships fly like alien craft: in straight dashes that speed up and slow down smoothly, never
     /// swaying, and they come to rest exactly on their station. A dash never passes through the
     /// tower: when the straight way would, the ship turns at a point beside it. With an Airspace, each ship
@@ -16,15 +17,18 @@ namespace AlienInvaders.Core.Ships
     /// </summary>
     public abstract class EnemyShip
     {
-        private const float EmergeSeconds = 1f;
         private const float ArrivalDistance = 2f;
+        // Pause over the city before the first shot of a raid.
+        private const float FirstCityShotDelay = 0.3f;
         // Possible stations tried when the sky is shared with other ships.
-        private const int StationCandidates = 16;
+        private const int StationCandidates = 24;
 
         protected readonly Random Random;
         private readonly Airspace _airspace;
         private float _phaseTimer;
         private float _currentSpeed;
+        private bool _launched;
+        private int _cityShotsLeft;
         // The way to the current destination, with its optional turning point.
         private Vector3 _wayEnd;
         private Vector3 _turningPoint;
@@ -36,6 +40,9 @@ namespace AlienInvaders.Core.Ships
         /// <summary>Health when the ship came out of the portal (for its health bar).</summary>
         public int MaxHealth { get; protected set; }
         public float Speed { get; protected set; }
+
+        /// <summary>Speed (m/s) at which the ship shoots out of its portal before braking to its cruise speed.</summary>
+        public float LaunchSpeed { get; protected set; }
 
         /// <summary>How fast the ship speeds up and slows down (m/s²).</summary>
         public float Acceleration { get; protected set; }
@@ -61,6 +68,12 @@ namespace AlienInvaders.Core.Ships
         /// <summary>Seconds left before the shot (only meaningful while Aiming).</summary>
         public float AimTimeLeft => Phase == ShipPhase.Aiming ? _phaseTimer : 0f;
 
+        /// <summary>Raids on the city still to come before the ship turns on the tower (the current one included).</summary>
+        public int CityRunsLeft { get; private set; }
+
+        /// <summary>True while the ship is still after the city (the tower is not in danger from it yet).</summary>
+        public bool IsRaiding => CityRunsLeft > 0;
+
         public bool IsAlive => Phase != ShipPhase.Destroyed;
 
         /// <summary>Raised when the warning laser appears (Unity: red thin laser + charging sound).</summary>
@@ -69,18 +82,22 @@ namespace AlienInvaders.Core.Ships
         /// <summary>Raised when the ship hits the tower: (ship, side, damage).</summary>
         public event Action<EnemyShip, TowerSide, float> OnFire;
 
+        /// <summary>Raised for every shot down at the city during a raid (Unity: a beam to a roof that blows up and burns).</summary>
+        public event Action<EnemyShip> OnCityShot;
+
         /// <summary>Raised once when health reaches zero.</summary>
         public event Action<EnemyShip> OnDestroyed;
 
         /// <param name="spawnPosition">Portal position.</param>
+        /// <param name="cityRuns">Raids on the city before turning on the tower (WaveConfig.CityRuns).</param>
         /// <param name="random">Shared deterministic random generator (wave seed).</param>
         /// <param name="airspace">The other ships, to keep away from them (null: the ship flies alone).</param>
-        protected EnemyShip(Vector3 spawnPosition, Random random, Airspace airspace)
+        protected EnemyShip(Vector3 spawnPosition, int cityRuns, Random random, Airspace airspace)
         {
             Position = spawnPosition;
             Random = random;
             _airspace = airspace;
-            _phaseTimer = EmergeSeconds;
+            CityRunsLeft = Math.Max(0, cityRuns);
             ChooseNewStation();
         }
 
@@ -96,13 +113,48 @@ namespace AlienInvaders.Core.Ships
             switch (Phase)
             {
                 case ShipPhase.Emerging:
-                    // Drift slowly out of the portal towards the station.
-                    Position = FlyTowards(Station, Speed * 0.3f, deltaTime);
-                    _phaseTimer -= deltaTime;
-                    if (_phaseTimer <= 0f)
+                    // Shot out of the portal at full launch speed; Glide brakes it hard down to its cruise speed.
+                    if (!_launched)
                     {
-                        Phase = ShipPhase.Approaching;
+                        _launched = true;
+                        _currentSpeed = Math.Max(Speed, LaunchSpeed);
                     }
+                    Position = FlyTowards(Station, Speed, deltaTime);
+                    if (_currentSpeed <= Speed)
+                    {
+                        Phase = IsRaiding ? ShipPhase.Raiding : ShipPhase.Approaching;
+                    }
+                    break;
+
+                case ShipPhase.Raiding:
+                    Position = FlyTowards(Station, Speed, deltaTime);
+                    if (Vector3.Distance(Position, Station) <= ArrivalDistance)
+                    {
+                        Phase = ShipPhase.Bombing;
+                        _cityShotsLeft = Balance.CityShotsPerRun;
+                        _phaseTimer = FirstCityShotDelay;
+                    }
+                    break;
+
+                case ShipPhase.Bombing:
+                    // Hovering over the city (the last meters to the point), firing down at the roofs.
+                    Position = FlyTowards(Station, Speed, deltaTime);
+                    _phaseTimer -= deltaTime;
+                    if (_phaseTimer > 0f)
+                    {
+                        break;
+                    }
+                    if (_cityShotsLeft > 0)
+                    {
+                        _cityShotsLeft--;
+                        _phaseTimer = Balance.CityShotInterval;
+                        OnCityShot?.Invoke(this);
+                        break;
+                    }
+                    // Raid over: on to the next one, or to the tower after the last.
+                    CityRunsLeft--;
+                    ChooseNewStation();
+                    Phase = IsRaiding ? ShipPhase.Raiding : ShipPhase.Approaching;
                     break;
 
                 case ShipPhase.Approaching:
@@ -154,13 +206,19 @@ namespace AlienInvaders.Core.Ships
         }
 
         /// <summary>
-        /// Picks a random point in the flight zone and the facade point it will shoot at. Ships aim a few meters
+        /// Picks a random point where to stop next: over the city while the ship still has raids to make, otherwise
+        /// in the flight zone around the tower, with the facade point it will shoot at. Ships aim a few meters
         /// below their own height, but always somewhere on the facade under the player. In a shared sky a few random
         /// points are tried: the first one whose way stays far enough from the other ships wins, or the freest one
         /// when the sky is crowded.
         /// </summary>
         protected void ChooseNewStation()
         {
+            bool raid = IsRaiding;
+            float minRadius = raid ? Balance.MinRaidRadius : Balance.MinFlightRadius;
+            float maxRadius = raid ? Balance.MaxRaidRadius : Balance.MaxFlightRadius;
+            float minHeight = raid ? Balance.MinRaidHeight : Balance.MinFlightHeight;
+            float maxHeight = raid ? Balance.MaxRaidHeight : Balance.MaxFlightHeight;
             int tries = _airspace == null ? 1 : StationCandidates;
             float azimuth = 0f;
             float height = 0f;
@@ -168,8 +226,8 @@ namespace AlienInvaders.Core.Ships
             for (int i = 0; i < tries && bestClearance < Balance.ShipSeparation; i++)
             {
                 float candidateAzimuth = (float)(Random.NextDouble() * 360.0);
-                float radius = Lerp(Balance.MinFlightRadius, Balance.MaxFlightRadius, (float)Random.NextDouble());
-                float candidateHeight = Lerp(Balance.MinFlightHeight, Balance.MaxFlightHeight, (float)Random.NextDouble());
+                float radius = Lerp(minRadius, maxRadius, (float)Random.NextDouble());
+                float candidateHeight = Lerp(minHeight, maxHeight, (float)Random.NextDouble());
                 Vector3 candidate = FromAzimuth(candidateAzimuth, radius, candidateHeight);
                 // The whole way counts, turning point included (subclasses only read Random and Balance here, so
                 // this is safe even while the base constructor runs).
@@ -239,12 +297,21 @@ namespace AlienInvaders.Core.Ships
         }
 
         // One straight dash: the ship speeds up gently up to maxSpeed and slows down in time to stop exactly on the
-        // destination (the fastest speed that can still stop in the distance left is sqrt(2 · a · d)).
+        // destination (the fastest speed that can still stop in the distance left is sqrt(2 · a · d)). A ship going
+        // faster than that (just shot out of a portal) brakes hard instead, never so late that it overshoots.
         private Vector3 Glide(Vector3 current, Vector3 destination, float maxSpeed, float deltaTime)
         {
             float distance = Vector3.Distance(current, destination);
-            float canStop = (float)Math.Sqrt(2f * Acceleration * distance);
-            _currentSpeed = Math.Min(_currentSpeed + Acceleration * deltaTime, Math.Min(maxSpeed, canStop));
+            float limit = Math.Min(maxSpeed, (float)Math.Sqrt(2f * Acceleration * distance));
+            if (_currentSpeed > limit)
+            {
+                float hardStop = (float)Math.Sqrt(2f * Balance.LaunchBraking * distance);
+                _currentSpeed = Math.Min(hardStop, Math.Max(limit, _currentSpeed - Balance.LaunchBraking * deltaTime));
+            }
+            else
+            {
+                _currentSpeed = Math.Min(_currentSpeed + Acceleration * deltaTime, limit);
+            }
             return MoveTowards(current, destination, _currentSpeed * deltaTime);
         }
 

@@ -18,14 +18,25 @@ namespace AlienInvaders.Tests
         [Test]
         public void Ships_GrowByTwo_AndOnlyAFewFlyAtOnce()
         {
-            int[] inAir = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 8 };
+            int[] inAir = { 3, 4, 5, 6, 7, 8, 8, 8 };
             for (int n = 1; n <= inAir.Length; n++)
             {
                 WaveConfig wave = WaveGenerator.Build(n, 1);
-                Assert.AreEqual(3 + 2 * (n - 1), wave.TotalShips, $"ships in wave {n}");
+                Assert.AreEqual(4 + 2 * (n - 1), wave.TotalShips, $"ships in wave {n}");
                 Assert.AreEqual(inAir[n - 1], wave.MaxShipsInAir, $"ships in the air in wave {n}");
                 Assert.LessOrEqual(wave.MaxShipsInAir, wave.TotalShips);
             }
+        }
+
+        [Test]
+        public void Ships_RaidTheCityLessAsWavesGo_ButAlwaysOnce()
+        {
+            int[] runs = { 3, 3, 3, 2, 2, 2, 1, 1 };
+            for (int n = 1; n <= runs.Length; n++)
+            {
+                Assert.AreEqual(runs[n - 1], WaveGenerator.Build(n, 1).CityRuns, $"city raids in wave {n}");
+            }
+            Assert.AreEqual(Balance.MinCityRuns, WaveGenerator.Build(50, 1).CityRuns);
         }
 
         [Test]
@@ -101,6 +112,23 @@ namespace AlienInvaders.Tests
             cycle.Tick(1f, 0); // all destroyed
             Assert.AreEqual(WavePhase.Peace, cycle.Phase);
             Assert.AreEqual((1, 1, 1), (portals, attacks, cleared));
+        }
+
+        [Test]
+        public void QuickWave_EarnsALongerRest_SlowWaveTheShortOne()
+        {
+            var cycle = new WaveCycle(new WaveGenerator(1));
+            cycle.Tick(Balance.PeaceSeconds + 0.01f, 0);
+            cycle.Tick(Balance.PortalOpeningSeconds + 0.01f, 0);
+            cycle.Tick(10f, 3);
+            cycle.Tick(0f, 0); // cleared 10 s after the attack started
+            Assert.AreEqual(Balance.MinWaveSeconds - 10f, cycle.PhaseTimeLeft, 0.01f);
+
+            cycle.Tick(cycle.PhaseTimeLeft + 0.01f, 0);
+            cycle.Tick(Balance.PortalOpeningSeconds + 0.01f, 0);
+            cycle.Tick(60f, 3);
+            cycle.Tick(0f, 0); // cleared after a long fight
+            Assert.AreEqual(Balance.PeaceSeconds, cycle.PhaseTimeLeft, 0.01f);
         }
     }
 

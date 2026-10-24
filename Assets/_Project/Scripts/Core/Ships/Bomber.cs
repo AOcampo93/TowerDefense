@@ -10,12 +10,13 @@ namespace AlienInvaders.Core.Ships
     public class Bomber : EnemyShip
     {
         public Bomber(Vector3 spawnPosition, WaveConfig wave, Random random, Airspace airspace = null)
-            : base(spawnPosition, random, airspace)
+            : base(spawnPosition, wave.CityRuns, random, airspace)
         {
             Type = ShipType.Bomber;
             Health = Balance.BomberHealth;
             MaxHealth = Health;
             Speed = Balance.BomberSpeed * wave.SpeedMultiplier;
+            LaunchSpeed = Balance.BomberLaunchSpeed;
             Acceleration = Balance.BomberAcceleration * wave.SpeedMultiplier;
             DamageToTower = Balance.BomberDamage;
             AimTime = wave.AimTimeBomber;

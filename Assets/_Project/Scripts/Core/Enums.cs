@@ -37,13 +37,15 @@ namespace AlienInvaders.Core
     }
 
     /// <summary>
-    /// Life cycle of a ship. Aiming exists so the player is always warned before the tower
-    /// takes damage (design pillar: fairness).
+    /// Life cycle of a ship: it shoots out of the portal, raids the city a few times and only then turns on the tower.
+    /// Aiming exists so the player is always warned before the tower takes damage (design pillar: fairness).
     /// </summary>
     public enum ShipPhase
     {
-        Emerging,     // leaving the portal
-        Approaching,  // flying to its firing station
+        Emerging,     // shooting out of the portal, braking down to its cruise speed
+        Raiding,      // flying to a point over the city
+        Bombing,      // stopped over the city, firing down at the buildings (the tower is safe)
+        Approaching,  // flying to its firing station near the tower
         Aiming,       // red aiming laser visible: destroying the ship now prevents the damage
         Destroyed
     }

@@ -11,12 +11,13 @@ namespace AlienInvaders.Core.Ships
     public class Fighter : EnemyShip
     {
         public Fighter(Vector3 spawnPosition, WaveConfig wave, Random random, Airspace airspace = null)
-            : base(spawnPosition, random, airspace)
+            : base(spawnPosition, wave.CityRuns, random, airspace)
         {
             Type = ShipType.Fighter;
             Health = Balance.FighterHealth;
             MaxHealth = Health;
             Speed = Balance.FighterSpeed * wave.SpeedMultiplier;
+            LaunchSpeed = Balance.FighterLaunchSpeed;
             Acceleration = Balance.FighterAcceleration * wave.SpeedMultiplier;
             DamageToTower = Balance.FighterDamage;
             AimTime = wave.AimTimeFighter;

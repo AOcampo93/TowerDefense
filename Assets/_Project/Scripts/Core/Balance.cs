@@ -97,18 +97,25 @@ namespace AlienInvaders.Core
         public const float BomberRatioPerWave = 0.05f;
         public const float MaxBomberRatio = 0.4f;
         public const float PeaceSeconds = 3f;
+
+        /// <summary>
+        /// Shortest time from the start of an attack to the end of the calm after it (seconds). A player who clears a
+        /// wave quickly earns a longer rest instead of meeting the next, harder wave sooner, so the difficulty grows
+        /// with time and skill keeps the tower standing longer.
+        /// </summary>
+        public const float MinWaveSeconds = 35f;
         public const float PortalOpeningSeconds = 5f;
 
         /// <summary>Seconds between two ships coming out of the same portal, so each one has flown clear of it.</summary>
         public const float SpawnIntervalSeconds = 2.5f;
 
         /// <summary>Ships in the first wave; every wave brings this many more.</summary>
-        public const int FirstWaveShips = 3;
+        public const int FirstWaveShips = 4;
         public const int ShipsAddedPerWave = 2;
 
         /// <summary>
-        /// Most ships flying at the same time: 3 in the first waves, one more every two waves, up to 8. The rest wait
-        /// in their portals, so a wave lasts longer instead of crowding the sky, and a skilled player who shoots them
+        /// Most ships flying at the same time: 3 in the first wave, one more every wave, up to 8. The rest wait in
+        /// their portals, so a wave lasts longer instead of crowding the sky, and a skilled player who shoots them
         /// down quickly is the one who keeps the sky clear.
         /// </summary>
         public const int FirstWaveShipsInAir = 3;
@@ -120,12 +127,45 @@ namespace AlienInvaders.Core
         /// </summary>
         public const float ShipSeparation = 45f;
 
+        // ---------- Raids on the city ----------
+        /// <summary>
+        /// Raids each ship makes on the city before it turns on the tower: 3 in the first three waves, 2 in the next
+        /// three, then 1. Meanwhile the tower is safe, so a player who brings the ships down over the city keeps the
+        /// tower whole, and the match has time to grow harder before the tower is in danger. In simulated matches with
+        /// the real rules, a player who never shoots lasts about 2.5 minutes of fight, a beginner about 5.5 and an
+        /// expert about 8 (plus the ride up).
+        /// </summary>
+        public const int FirstWaveCityRuns = 3;
+        public const int WavesPerCityRunLost = 3;
+        public const int MinCityRuns = 1;
+
+        /// <summary>Shots a ship fires down at the city on each raid, and the seconds between them.</summary>
+        public const int CityShotsPerRun = 3;
+        public const float CityShotInterval = 0.7f;
+
+        /// <summary>
+        /// Where ships stop over the city (meters, relative to the player platform): farther out than the tower
+        /// stations and below the player, but well above the roofs (the tallest is 100 m under the top).
+        /// </summary>
+        public const float MinRaidRadius = 90f;
+        public const float MaxRaidRadius = 180f;
+        public const float MinRaidHeight = -70f;
+        public const float MaxRaidHeight = -30f;
+
         // ---------- Ships ----------
+        /// <summary>
+        /// Speed (m/s) at which a ship shoots out of its portal. It then brakes hard (LaunchBraking, m/s²) down to its
+        /// cruise speed, so a new ship bursts into the sky instead of drifting out.
+        /// </summary>
+        public const float FighterLaunchSpeed = 60f;
+        public const float BomberLaunchSpeed = 36f;
+        public const float LaunchBraking = 35f;
+
         /// <summary>Bolts a fighter takes (half a second of burst).</summary>
         public const int FighterHealth = 5;
         public const float FighterSpeed = 16f;
         public const float FighterAimTime = 1.5f;
-        public const float FighterDamage = 2f;
+        public const float FighterDamage = 3f;
         /// <summary>How fast a fighter speeds up and slows down (m/s²): agile, but never swaying.</summary>
         public const float FighterAcceleration = 9f;
         /// <summary>Chance that a fighter splits its way to the next station into two straight dashes.</summary>
@@ -137,7 +177,7 @@ namespace AlienInvaders.Core
         public const int BomberHealth = 12;
         public const float BomberSpeed = 8f;
         public const float BomberAimTime = 2.5f;
-        public const float BomberDamage = 6f;
+        public const float BomberDamage = 9f;
         /// <summary>A bomber is heavy: it speeds up and slows down slowly (m/s²).</summary>
         public const float BomberAcceleration = 2.5f;
 

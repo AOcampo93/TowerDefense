@@ -23,6 +23,8 @@ namespace AlienInvaders.Views
         [SerializeField] private float _aimWidthStart = 0.03f;
         [SerializeField] private float _aimWidthEnd = 0.12f;
         [SerializeField] private float _fireWidth = 0.35f;
+        [Tooltip("Width of the beam fired down at the city: raids are far from the tower, so it is thicker to be seen.")]
+        [SerializeField] private float _cityFireWidth = 1.2f;
         [SerializeField] private float _fireSeconds = 0.2f;
 
         [Header("Health bar")]
@@ -56,6 +58,7 @@ namespace AlienInvaders.Views
         private float _aimSeconds;
         private float _aimTimer;
         private float _fireTimer;
+        private float _shotWidth;
 
         private void Awake()
         {
@@ -123,10 +126,11 @@ namespace AlienInvaders.Views
             _voice.Play();
         }
 
-        /// <summary>The ship fires (at the tower or down at the city): a short heavy beam.</summary>
-        public void ShowFire(Vector3 target)
+        /// <summary>The ship fires (at the tower, or down at the city during a raid): a short heavy beam.</summary>
+        public void ShowFire(Vector3 target, bool atCity = false)
         {
             _fireTarget = target;
+            _shotWidth = atCity ? _cityFireWidth : _fireWidth;
             _aimLaser.enabled = false;
             _fireLaser.enabled = true;
             _fireTimer = _fireSeconds;
@@ -155,7 +159,7 @@ namespace AlienInvaders.Views
             if (_fireLaser.enabled)
             {
                 _fireTimer -= dt;
-                _fireLaser.widthMultiplier = _fireWidth * Mathf.Clamp01(_fireTimer / _fireSeconds);
+                _fireLaser.widthMultiplier = _shotWidth * Mathf.Clamp01(_fireTimer / _fireSeconds);
                 SetLaserPoints(_fireLaser, _fireTarget);
                 if (_fireTimer <= 0f)
                 {

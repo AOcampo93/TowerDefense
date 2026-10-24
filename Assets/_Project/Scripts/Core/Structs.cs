@@ -17,6 +17,9 @@ namespace AlienInvaders.Core
 
         /// <summary>Most ships of this wave flying at the same time; the others wait in their portals.</summary>
         public int MaxShipsInAir;
+
+        /// <summary>Raids on the city each ship makes before it turns on the tower.</summary>
+        public int CityRuns;
         public float SpeedMultiplier;
         public float AimTimeFighter;
         public float AimTimeBomber;

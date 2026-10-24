@@ -9,8 +9,16 @@ namespace AlienInvaders.Tests
 {
     public class EnemyShipTests
     {
+        /// <summary>A fighter of a wave whose ships skip the city and go straight for the tower.</summary>
         private static EnemyShip NewFighter(int seed = 1) =>
-            ShipFactory.Create(ShipType.Fighter, new Vector3(0f, 20f, 35f), WaveGenerator.Build(1, seed), new Random(seed));
+            ShipFactory.Create(ShipType.Fighter, new Vector3(0f, 20f, 35f), TowerWave(seed), new Random(seed));
+
+        private static WaveConfig TowerWave(int seed)
+        {
+            WaveConfig wave = WaveGenerator.Build(1, seed);
+            wave.CityRuns = 0;
+            return wave;
+        }
 
         /// <summary>Runs the ship until it starts aiming (or gives up after 60 simulated seconds).</summary>
         private static void RunUntilAiming(EnemyShip ship)
@@ -65,22 +73,71 @@ namespace AlienInvaders.Tests
                     Vector3 portal = EnemyShip.FromAzimuth(seed * 47f, 160f, 30f);
                     EnemyShip ship = ShipFactory.Create(type, portal, WaveGenerator.Build(3, seed), new Random(seed));
                     Vector3 previous = ship.Position;
-                    float previousSpeed = 0f;
+                    float previousSpeed = ship.LaunchSpeed;
                     float closest = float.MaxValue;
-                    // A minute of flight: several stations, shots and turns.
+                    // A minute of flight: raids on the city, stations by the tower, shots and turns.
                     for (int i = 0; i < 3000; i++)
                     {
+                        bool launching = ship.Phase == ShipPhase.Emerging;
                         ship.Tick(Step);
                         float speed = Vector3.Distance(ship.Position, previous) / Step;
-                        // Speed changes no faster than the ship's acceleration: no sudden starts, stops or swerves (the
-                        // margin covers the last step before a stop, which ends short on the station).
-                        Assert.LessOrEqual(Math.Abs(speed - previousSpeed), ship.Acceleration * Step * 1.5f + 0.5f);
+                        // Speed changes no faster than the ship's acceleration (its hard braking right after the
+                        // portal): no sudden starts, stops or swerves (the margin covers the last step before a stop,
+                        // which ends short on the station).
+                        float change = launching ? Balance.LaunchBraking : ship.Acceleration;
+                        Assert.LessOrEqual(Math.Abs(speed - previousSpeed), change * Step * 1.5f + 0.5f);
                         closest = Math.Min(closest, new Vector2(ship.Position.X, ship.Position.Z).Length());
                         previous = ship.Position;
                         previousSpeed = speed;
                     }
                     Assert.Greater(closest, 25f, $"{type} with seed {seed} flew too close to the tower");
                 }
+            }
+        }
+
+        [Test]
+        public void Ship_BurstsOutOfThePortal_ThenSlowsToCruiseSpeed()
+        {
+            foreach (ShipType type in new[] { ShipType.Fighter, ShipType.Bomber })
+            {
+                Vector3 portal = EnemyShip.FromAzimuth(200f, 160f, 30f);
+                EnemyShip ship = ShipFactory.Create(type, portal, WaveGenerator.Build(1, 3), new Random(3));
+                ship.Tick(0.02f);
+                // Leaves at its launch speed, far faster than it cruises.
+                Assert.Greater(Vector3.Distance(portal, ship.Position) / 0.02f, ship.Speed * 2f, $"{type} left the portal slowly");
+                for (int i = 0; i < 500 && ship.Phase == ShipPhase.Emerging; i++)
+                {
+                    ship.Tick(0.02f);
+                }
+                Assert.AreNotEqual(ShipPhase.Emerging, ship.Phase, $"{type} never slowed down to its cruise speed");
+                Assert.Greater(Vector3.Distance(portal, ship.Position), 15f, $"{type} stopped too close to the portal");
+            }
+        }
+
+        [Test]
+        public void Ship_RaidsTheCity_BeforeTurningOnTheTower()
+        {
+            for (int seed = 1; seed <= 10; seed++)
+            {
+                WaveConfig wave = WaveGenerator.Build(1, seed);
+                EnemyShip ship = ShipFactory.Create(ShipType.Fighter, EnemyShip.FromAzimuth(seed * 33f, 160f, 30f), wave, new Random(seed));
+                int cityShots = 0;
+                int cityShotsBeforeAiming = -1;
+                ship.OnCityShot += _ => cityShots++;
+                ship.OnAimStarted += _ => cityShotsBeforeAiming = cityShots;
+                for (int i = 0; i < 6000 && cityShotsBeforeAiming < 0; i++)
+                {
+                    if (ship.Phase == ShipPhase.Bombing)
+                    {
+                        // Over the city: farther out than the tower stations and below the player.
+                        float radius = new Vector2(ship.Station.X, ship.Station.Z).Length();
+                        Assert.That(radius, Is.InRange(Balance.MinRaidRadius, Balance.MaxRaidRadius));
+                        Assert.That(ship.Station.Y, Is.InRange(Balance.MinRaidHeight, Balance.MaxRaidHeight));
+                    }
+                    ship.Tick(0.02f);
+                }
+                Assert.AreEqual(wave.CityRuns * Balance.CityShotsPerRun, cityShotsBeforeAiming, $"seed {seed}");
+                Assert.IsFalse(ship.IsRaiding);
             }
         }
 

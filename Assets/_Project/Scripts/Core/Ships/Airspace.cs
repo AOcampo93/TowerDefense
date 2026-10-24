@@ -12,8 +12,10 @@ namespace AlienInvaders.Core.Ships
     /// </summary>
     public class Airspace
     {
-        // Points measured along a way (its start is left out: it is where the ship already is).
-        private const int Samples = 6;
+        // A way is measured every few meters (its start is left out: it is where the ship already is), so long ways
+        // over the city are checked as closely as short ones by the tower.
+        private const float SampleSpacing = 8f;
+        private const int MinSamples = 6;
 
         private readonly List<EnemyShip> _ships = new List<EnemyShip>();
 
@@ -52,12 +54,20 @@ namespace AlienInvaders.Core.Ships
                 {
                     continue;
                 }
-                for (int i = 1; i <= Samples; i++)
-                {
-                    float t = (float)i / Samples;
-                    clearance = Math.Min(clearance, DistanceToWay(Vector3.Lerp(from, via, t), other));
-                    clearance = Math.Min(clearance, DistanceToWay(Vector3.Lerp(via, station, t), other));
-                }
+                clearance = Math.Min(clearance, Clearance(from, via, other));
+                clearance = Math.Min(clearance, Clearance(via, station, other));
+            }
+            return clearance;
+        }
+
+        // Shortest distance from the points along one straight dash to the way of another ship.
+        private static float Clearance(Vector3 start, Vector3 end, EnemyShip other)
+        {
+            int samples = Math.Max(MinSamples, (int)Math.Ceiling(Vector3.Distance(start, end) / SampleSpacing));
+            float clearance = float.MaxValue;
+            for (int i = 1; i <= samples; i++)
+            {
+                clearance = Math.Min(clearance, DistanceToWay(Vector3.Lerp(start, end, (float)i / samples), other));
             }
             return clearance;
         }
