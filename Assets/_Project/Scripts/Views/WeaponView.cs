@@ -26,6 +26,9 @@ namespace AlienInvaders.Views
         [Tooltip("White hot center of the beam, drawn over the colored glow.")]
         [SerializeField] private LineRenderer _beamCore;
         [SerializeField] private GameObject _muzzleFlash;
+        [Tooltip("Burst of sparks at the muzzle on every shot (optional store asset).")]
+        [SerializeField] private GameObject _muzzleSparksPrefab;
+        [SerializeField] private float _muzzleSparksScale = 0.12f;
 
         [Header("Feel")]
         [Tooltip("Seconds a beam stays visible; it thins out while it fades.")]
@@ -55,6 +58,7 @@ namespace AlienInvaders.Views
         [SerializeField] private float _shotVolume = 0.5f;
 
         private MaterialPropertyBlock _coilBlock;
+        private ParticleEffect _muzzleSparks;
         private Color _shownCoilColor;
         private float _beamTimer;
         private float _overheatKickTimer;
@@ -63,6 +67,7 @@ namespace AlienInvaders.Views
         private void Awake()
         {
             _coilBlock = new MaterialPropertyBlock();
+            _muzzleSparks = ParticleEffect.Attach(_muzzleSparksPrefab, _muzzleFlash.transform.parent, _muzzleSparksScale, false);
             SetVisible(false);
         }
 
@@ -138,6 +143,7 @@ namespace AlienInvaders.Views
             _beamCore.widthMultiplier = _beamCoreWidth;
             _beamCore.enabled = true;
             _muzzleFlash.SetActive(true);
+            _muzzleSparks?.Restart();
             _beamTimer = _beamSeconds;
             _audio.PlayOneShot(_sounds.PlayerShot, _shotVolume);
 

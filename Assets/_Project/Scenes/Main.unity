@@ -25937,6 +25937,7 @@ GameObject:
   - component: {fileID: 1908683101}
   - component: {fileID: 1908683103}
   - component: {fileID: 1908683102}
+  - component: {fileID: 1908683104}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -26033,6 +26034,7 @@ MonoBehaviour:
   _fighterPrefab: {fileID: 1665761235359433715, guid: 54fd787bcc13f4e828436859f0b06091, type: 3}
   _bomberPrefab: {fileID: 7475921335747704945, guid: 31a89c5e9dbb446c88318d3d2b601e1a, type: 3}
   _explosions: {fileID: 1908683095}
+  _hits: {fileID: 1908683104}
   _towerDamage: {fileID: 1908683103}
   _cityFires: {fileID: 1908683102}
   _prewarmFighters: 40
@@ -26306,6 +26308,21 @@ MonoBehaviour:
   _dustSpeed: {x: 2, y: 7}
   _dustSize: {x: 5, y: 12}
   _dustColor: {r: 0.45, g: 0.38, b: 0.34, a: 0.85}
+--- !u!114 &1908683104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1908683089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2fb3a99f1b2948769af269c4f1d273a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlienInvaders.Views.ExplosionPool
+  _prefab: {fileID: 4023871279788835527, guid: acac963e43b004d7d8c4e198418d4f22, type: 3}
+  _root: {fileID: 1918742324}
+  _prewarm: 12
 --- !u!1 &1918742323
 GameObject:
   m_ObjectHideFlags: 0
@@ -26752,6 +26769,8 @@ MonoBehaviour:
   _beam: {fileID: 1731345119}
   _beamCore: {fileID: 246884718}
   _muzzleFlash: {fileID: 1670163799}
+  _muzzleSparksPrefab: {fileID: 952961124639765284, guid: 1095a5c9f65bfbe4383f63d5d1886c65, type: 3}
+  _muzzleSparksScale: 0.12
   _beamSeconds: 0.07
   _beamWidth: 0.13
   _beamCoreWidth: 0.04

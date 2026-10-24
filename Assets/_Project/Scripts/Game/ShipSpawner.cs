@@ -23,6 +23,8 @@ namespace AlienInvaders.Game
         [SerializeField] private ShipController _fighterPrefab;
         [SerializeField] private ShipController _bomberPrefab;
         [SerializeField] private ExplosionPool _explosions;
+        [Tooltip("Small flashes where the bolts land on a hull (the explosion pool is used when this is empty).")]
+        [SerializeField] private ExplosionPool _hits;
         [SerializeField] private TowerDamageView _towerDamage;
         [SerializeField] private CityFires _cityFires;
         [SerializeField] private int _prewarmFighters = 40;
@@ -99,7 +101,8 @@ namespace AlienInvaders.Game
         /// <summary>A bolt hit a ship that survives: part of its hull blows up.</summary>
         public void HandleShipHit(ShipType type, Vector3 point)
         {
-            _explosions.Spawn(point, type == ShipType.Bomber ? _bomberHitSize : _fighterHitSize);
+            ExplosionPool pool = _hits != null ? _hits : _explosions;
+            pool.Spawn(point, type == ShipType.Bomber ? _bomberHitSize : _fighterHitSize);
         }
 
         /// <summary>Picks a roof below a flying ship for it to fire at. False when there is no city under it.</summary>

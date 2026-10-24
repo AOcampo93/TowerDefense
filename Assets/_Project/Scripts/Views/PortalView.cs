@@ -4,14 +4,21 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// Greybox alien portal: a black disc with two glowing purple rings that spin in opposite directions. It grows
-    /// open during the portal phase, so the player sees (and hears, with a 3D drone that swells with it) where the next
-    /// wave will come from, and shrinks away when the wave is cleared. Pooled by the PortalSpawner.
+    /// Alien portal: the particle portal of a store pack when it is in the project (a white core inside a swirling
+    /// violet ring), otherwise a greybox black disc with two glowing purple rings that spin in opposite directions.
+    /// It grows open during the portal phase, so the player sees (and hears, with a 3D drone that swells with it) where
+    /// the next wave will come from, and shrinks away when the wave is cleared. Pooled by the PortalSpawner.
     /// </summary>
     public class PortalView : MonoBehaviour
     {
-        [Tooltip("Disc and rings; scaled from 0 to 1 while the portal opens.")]
+        [Tooltip("Disc and rings (or the particle portal); scaled from 0 to 1 while the portal opens.")]
         [SerializeField] private Transform _visual;
+        [Tooltip("Particle portal shown in place of the greybox disc and rings (optional store asset).")]
+        [SerializeField] private GameObject _effectPrefab;
+        [Tooltip("Scale of the particle portal inside Visual, so it is as wide as the greybox disc.")]
+        [SerializeField] private float _effectScale = 2.2f;
+        [Tooltip("Greybox parts hidden when the particle portal is there.")]
+        [SerializeField] private GameObject[] _greyboxParts;
         [SerializeField] private Transform _outerRing;
         [SerializeField] private Transform _innerRing;
         [SerializeField] private GameSounds _sounds;
@@ -29,9 +36,23 @@ namespace AlienInvaders.Views
         private float _closeElapsed;
         private bool _closing;
         private Action<PortalView> _onClosed;
+        private ParticleEffect _effect;
 
         /// <summary>0 while closed, 1 once fully open (used by the radar to pulse the portal).</summary>
         public float Openness { get; private set; }
+
+        private void Awake()
+        {
+            _effect = ParticleEffect.Attach(_effectPrefab, _visual, _effectScale, true);
+            if (_effect == null)
+            {
+                return;
+            }
+            foreach (GameObject part in _greyboxParts)
+            {
+                part.SetActive(false);
+            }
+        }
 
         /// <summary>Starts opening at a position in tower space, facing the tower.</summary>
         public void Open(Vector3 localPosition, float seconds)
@@ -44,6 +65,7 @@ namespace AlienInvaders.Views
             _closing = false;
             _onClosed = null;
             SetOpenness(0f);
+            _effect?.Restart();
             _hum.clip = _sounds.PortalHum;
             _hum.loop = true;
             _hum.Play();
