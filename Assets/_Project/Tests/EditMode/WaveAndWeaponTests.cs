@@ -279,9 +279,10 @@ namespace AlienInvaders.Tests
         public void Boost_HitsHarder_ForAFewSeconds()
         {
             var boost = new WeaponBoost();
-            int started = 0, ended = 0;
+            int started = 0, ended = 0, collected = 0;
             boost.OnStarted += () => started++;
             boost.OnEnded += () => ended++;
+            boost.OnCollected += () => collected++;
             Assert.AreEqual(Balance.ShotDamage, boost.ShotDamage);
 
             boost.Collect();
@@ -294,6 +295,56 @@ namespace AlienInvaders.Tests
             Assert.IsFalse(boost.Active);
             Assert.AreEqual(Balance.ShotDamage, boost.ShotDamage);
             Assert.AreEqual((1, 1), (started, ended));
+            Assert.AreEqual(2, collected, "every power up collected is announced, even one that only extends the boost");
+        }
+
+        [Test]
+        public void PowerUp_ComesOutAfterTheBlast_AndTakesSeveralBolts()
+        {
+            var drop = new PowerUpDrop();
+            // Inside the blast the cubes cannot be grabbed by the bolts that brought the ship down.
+            Assert.IsFalse(drop.Visible);
+            Assert.IsFalse(drop.Hit());
+            drop.Tick(Balance.PowerUpAppearSeconds * 0.9f);
+            Assert.IsFalse(drop.Visible);
+            Assert.IsFalse(drop.Hit());
+            Assert.AreEqual(0, drop.Hits);
+
+            drop.Tick(Balance.PowerUpAppearSeconds * 0.2f);
+            Assert.IsTrue(drop.Visible);
+            for (int i = 1; i < Balance.PowerUpHits; i++)
+            {
+                Assert.IsFalse(drop.Hit(), $"collected after only {i} bolts");
+                Assert.AreEqual((float)i / Balance.PowerUpHits, drop.Charge, 1e-5f);
+            }
+            Assert.IsTrue(drop.Hit());
+            Assert.IsTrue(drop.Collected);
+            Assert.IsTrue(drop.Gone);
+            Assert.IsFalse(drop.Hit(), "a collected power up was collected again");
+
+            // A held trigger collects it in well under its time in the sky, but not in a single bolt.
+            float fireSeconds = Balance.PowerUpHits / Balance.ShotsPerSecond;
+            Assert.Greater(Balance.PowerUpHits, 1);
+            Assert.Less(fireSeconds, Balance.PowerUpFloatSeconds / 4f);
+        }
+
+        [Test]
+        public void PowerUp_VanishesIfNotShotInTime()
+        {
+            var drop = new PowerUpDrop();
+            drop.Tick(Balance.PowerUpAppearSeconds);
+            drop.Hit();
+            drop.Tick(Balance.PowerUpFloatSeconds - 0.1f);
+            Assert.IsTrue(drop.Visible);
+            Assert.AreEqual(0.1f, drop.TimeLeft, 1e-4f);
+            drop.Tick(0.2f);
+            Assert.IsTrue(drop.Gone);
+            Assert.IsFalse(drop.Collected);
+            Assert.IsFalse(drop.Hit());
+
+            drop.Reset();
+            Assert.IsFalse(drop.Gone);
+            Assert.AreEqual(0, drop.Hits);
         }
     }
 }

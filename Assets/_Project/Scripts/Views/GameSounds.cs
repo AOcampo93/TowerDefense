@@ -14,6 +14,12 @@ namespace AlienInvaders.Views
         [SerializeField] private AudioClip[] _playerShots;
         [SerializeField] private AudioClip _overheat;
 
+        [Header("Power ups")]
+        [SerializeField] private AudioClip _powerUpAppear;
+        [SerializeField] private AudioClip _powerUpHit;
+        [SerializeField] private AudioClip _powerUp;
+        [SerializeField] private AudioClip _superHum;
+
         [Header("Ships")]
         [SerializeField] private AudioClip _shipEngine;
         [SerializeField] private AudioClip _charge;
@@ -37,6 +43,12 @@ namespace AlienInvaders.Views
 
         public AudioClip PlayerShot => Pick(_playerShots, PlaceholderSounds.PlayerShot);
         public AudioClip Overheat => Or(_overheat, PlaceholderSounds.Overheat);
+        public AudioClip PowerUpAppear => Or(_powerUpAppear, PlaceholderSounds.PowerUpAppear);
+        public AudioClip PowerUpHit => Or(_powerUpHit, PlaceholderSounds.PowerUpHit);
+        public AudioClip PowerUp => Or(_powerUp, PlaceholderSounds.PowerUp);
+
+        /// <summary>Loop: electric hum of the super weapon while a power up lasts.</summary>
+        public AudioClip SuperHum => Or(_superHum, PlaceholderSounds.SuperHum);
         public AudioClip ShipEngine => Or(_shipEngine, PlaceholderSounds.Engine);
         public AudioClip Charge => Or(_charge, PlaceholderSounds.Charge);
         public AudioClip EnemyShot => Pick(_enemyShots, PlaceholderSounds.EnemyShot);

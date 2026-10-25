@@ -25,6 +25,9 @@ namespace AlienInvaders.Core
         /// <summary>Raised when a boost starts (not when a new power up only makes it last longer).</summary>
         public event Action OnStarted;
 
+        /// <summary>Raised on every power up collected, also when it only makes the boost last longer.</summary>
+        public event Action OnCollected;
+
         /// <summary>Raised when the boost runs out.</summary>
         public event Action OnEnded;
 
@@ -59,6 +62,7 @@ namespace AlienInvaders.Core
             {
                 OnStarted?.Invoke();
             }
+            OnCollected?.Invoke();
         }
 
         /// <summary>Counts the boost down.</summary>

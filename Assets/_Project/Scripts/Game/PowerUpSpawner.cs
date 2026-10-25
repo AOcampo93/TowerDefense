@@ -39,11 +39,11 @@ namespace AlienInvaders.Game
             _game.OnStateChanged -= HandleStateChanged;
         }
 
-        /// <summary>Glowing cubes at a world position, for Balance.PowerUpFloatSeconds.</summary>
+        /// <summary>Glowing cubes where a ship blew up; they come out of the blast a moment later.</summary>
         public void Spawn(Vector3 position)
         {
             PowerUpPickup pickup = _pool.Get();
-            pickup.Begin(position, Balance.PowerUpFloatSeconds, this);
+            pickup.Begin(position, this);
             _active.Add(pickup);
         }
 

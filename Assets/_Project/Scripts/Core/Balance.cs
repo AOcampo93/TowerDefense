@@ -250,14 +250,18 @@ namespace AlienInvaders.Core
         // ---------- Power ups ----------
         /// <summary>
         /// Power ups come only from the big ships: from this wave on (or earlier, whenever the sky holds PowerUpCrowd
-        /// ships or more), every BombersPerPowerUp-th bomber brought down leaves glowing cubes right where it blew up.
-        /// They stay only PowerUpFloatSeconds; shooting them makes every bolt hit BoostDamageMultiplier times harder
-        /// for BoostSeconds (and cools the weapon), the help the player needs when the waves grow bigger than their aim.
+        /// ships or more), every BombersPerPowerUp-th bomber brought down leaves glowing cubes where it blew up. They
+        /// come out of the blast PowerUpAppearSeconds later, so the stream of bolts that brought the ship down does not
+        /// grab them unseen, and take PowerUpHits bolts to collect (about half a second of fire). They stay only
+        /// PowerUpFloatSeconds; collecting them makes every bolt hit BoostDamageMultiplier times harder for
+        /// BoostSeconds (and cools the weapon), the help the player needs when the waves grow bigger than their aim.
         /// </summary>
         public const int PowerUpFirstWave = 5;
         public const int PowerUpCrowd = 8;
         public const int BombersPerPowerUp = 2;
-        public const float PowerUpFloatSeconds = 4f;
+        public const float PowerUpAppearSeconds = 1f;
+        public const int PowerUpHits = 6;
+        public const float PowerUpFloatSeconds = 6f;
         public const float BoostSeconds = 8f;
         public const int BoostDamageMultiplier = 3;
 

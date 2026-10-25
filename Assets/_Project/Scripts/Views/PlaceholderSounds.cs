@@ -24,6 +24,10 @@ namespace AlienInvaders.Views
         private static AudioClip _alarm;
         private static AudioClip _beep;
         private static AudioClip _go;
+        private static AudioClip _powerUpAppear;
+        private static AudioClip _powerUpHit;
+        private static AudioClip _powerUp;
+        private static AudioClip _superHum;
 
         /// <summary>Loop: buzzing tone of a ship charging its shot (the ShipView raises its pitch).</summary>
         public static AudioClip Charge => _charge != null ? _charge : (_charge = BuildCharge());
@@ -57,6 +61,19 @@ namespace AlienInvaders.Views
 
         /// <summary>Rising two-note signal when the ships come out of the portals.</summary>
         public static AudioClip Go => _go != null ? _go : (_go = BuildGo());
+
+        /// <summary>Sparkling rising chime when power up cubes come out of a blast.</summary>
+        public static AudioClip PowerUpAppear =>
+            _powerUpAppear != null ? _powerUpAppear : (_powerUpAppear = BuildPowerUpAppear());
+
+        /// <summary>Short bright ping of a bolt hitting the cubes (the pickup raises its pitch with every hit).</summary>
+        public static AudioClip PowerUpHit => _powerUpHit != null ? _powerUpHit : (_powerUpHit = BuildPowerUpHit());
+
+        /// <summary>Rising charge up when the cubes are collected and the super weapon starts.</summary>
+        public static AudioClip PowerUp => _powerUp != null ? _powerUp : (_powerUp = BuildPowerUp());
+
+        /// <summary>Loop: crackling electric hum of the super weapon.</summary>
+        public static AudioClip SuperHum => _superHum != null ? _superHum : (_superHum = BuildSuperHum());
 
         private static AudioClip BuildCharge()
         {
@@ -212,6 +229,91 @@ namespace AlienInvaders.Views
                           Mathf.Clamp01(local / 0.005f) * Mathf.Exp(-local * 6f);
             }
             return ToClip("Go", data);
+        }
+
+        private static AudioClip BuildPowerUpAppear()
+        {
+            // Three quick notes going up (C6, E6, G6), each one ringing on under the next, like a sparkle.
+            float[] notes = { 1046.5f, 1318.5f, 1568f };
+            float[] data = NewBuffer(0.6f);
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float sum = 0f;
+                for (int n = 0; n < notes.Length; n++)
+                {
+                    float local = t - n * 0.07f;
+                    if (local > 0f)
+                    {
+                        sum += Mathf.Sin(2f * Mathf.PI * notes[n] * local) * Mathf.Clamp01(local / 0.004f) *
+                               Mathf.Exp(-local * 7f);
+                    }
+                }
+                data[i] = 0.3f * sum;
+            }
+            return ToClip("PowerUpAppear", data);
+        }
+
+        private static AudioClip BuildPowerUpHit()
+        {
+            // A glassy ping: a tone and its octave, with a tiny click of noise at the start.
+            float[] data = NewBuffer(0.14f);
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float tone = 0.7f * Mathf.Sin(2f * Mathf.PI * 1175f * t) + 0.3f * Mathf.Sin(2f * Mathf.PI * 2350f * t);
+                float click = Noise() * Mathf.Exp(-t * 400f);
+                data[i] = (0.5f * tone * Mathf.Exp(-t * 28f) + 0.2f * click) * Mathf.Clamp01(t / 0.002f);
+            }
+            return ToClip("PowerUpHit", data);
+        }
+
+        private static AudioClip BuildPowerUp()
+        {
+            // 0.8 s: a buzzing sweep from 220 Hz up to 1760 Hz, then a bright chord rings out.
+            float[] data = NewBuffer(0.8f);
+            float phase = 0f;
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float sweep = 0f;
+                if (t < 0.45f)
+                {
+                    float frequency = 220f * Mathf.Pow(1760f / 220f, t / 0.45f);
+                    phase += frequency / SampleRate;
+                    sweep = 0.4f * Tanh(2f * Saw(phase)) * Mathf.Clamp01(t / 0.01f) * Mathf.Clamp01((0.45f - t) / 0.02f);
+                }
+                float ring = 0f;
+                if (t >= 0.4f)
+                {
+                    float local = t - 0.4f;
+                    ring = (Mathf.Sin(2f * Mathf.PI * 1760f * local) + 0.6f * Mathf.Sin(2f * Mathf.PI * 2637f * local)) *
+                           0.25f * Mathf.Clamp01(local / 0.005f) * Mathf.Exp(-local * 6f);
+                }
+                data[i] = sweep + ring;
+            }
+            return ToClip("PowerUp", data);
+        }
+
+        private static AudioClip BuildSuperHum()
+        {
+            // 1 s: 120 Hz = 120 cycles and 181 Hz = 181 cycles, a throb at 8 Hz = 8 cycles, and random crackles.
+            float[] data = NewBuffer(1f);
+            float crackle = 0f;
+            for (int i = 0; i < data.Length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float throb = 0.75f + 0.25f * Mathf.Sin(2f * Mathf.PI * 8f * t);
+                float buzz = 0.6f * Saw(120f * t) + 0.4f * Tanh(2f * Mathf.Sin(2f * Mathf.PI * 181f * t));
+                // About 25 sparks per second, each a short burst of hiss.
+                if (NoiseSource.NextDouble() < 25.0 / SampleRate)
+                {
+                    crackle = 1f;
+                }
+                crackle *= 0.995f;
+                data[i] = 0.3f * throb * buzz + 0.35f * crackle * Noise();
+            }
+            return ToClip("SuperHum", data);
         }
 
         private static float[] NewBuffer(float seconds)

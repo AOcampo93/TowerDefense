@@ -73,7 +73,7 @@ How to run:
 * Tower tilt, staged drops and shake driven by the motion bus
 * Portals and endless waves with only a few seconds of rest between them, ships pouring out one after another and fighters that get faster every wave
 * Bomber raids with huge blasts on the city that the player hears and feels on the platform
-* Power ups left by some bombers that make the weapon stronger for a few seconds
+* Power ups left by some bombers: glowing cubes that take a few bolts to collect and turn the gun into a super weapon with a thick green beam, electric arcs and a hum for a few seconds
 * Wrist radar and spatial audio
 * Critical state, emergency rescue elevator and results panels
 * Local Top 10 with arcade style initials and a shareable record code
