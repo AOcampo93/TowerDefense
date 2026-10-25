@@ -17,7 +17,7 @@ namespace AlienInvaders.Views
         [Tooltip("Shown only while the player enters their initials.")]
         [SerializeField] private GameObject _root;
         [SerializeField] private TMP_Text[] _letters;
-        [Tooltip("Underline that sits below the selected slot.")]
+        [Tooltip("Frame behind the selected slot (it shows around its box).")]
         [SerializeField] private RectTransform _cursor;
         [SerializeField] private Color _selectedColor = new Color(1f, 0.85f, 0.2f);
         [SerializeField] private Color _idleColor = Color.white;

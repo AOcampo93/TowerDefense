@@ -1,18 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using AlienInvaders.Core;
 using AlienInvaders.Core.Records;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// End of match screen in the real room (AR): a panel floating 1.5 m in front of the player with "Your run" on
-    /// the left (time, ships, accuracy, wave, score and a shareable record code) and the local Top 10 on the right.
-    /// A new record first asks for initials; then the "Play again" button appears.
+    /// End of match screen in the real room (AR): a "TOWER DOWN" scoreboard (a 3D model) floating 1.5 m in front of
+    /// the player. Its screen shows "Your run" on the left (time, ships, accuracy, wave, score and a shareable record
+    /// code) and the local Top 10 on the right, one row per record on alternating stripes, with this match's row in
+    /// gold. A new record first asks for initials under the score; then the "Play again" button takes their place.
     /// It only shows what the GameController gives it; saving records is not its job.
     /// </summary>
     public class ResultsView : MonoBehaviour
@@ -22,13 +23,20 @@ namespace AlienInvaders.Views
         [SerializeField] private Transform _head;
         [SerializeField] private float _distance = 1.5f;
         [SerializeField] private float _heightOffset = -0.1f;
-        [SerializeField] private TMP_Text _runText;
+        [Tooltip("Values of the run (time, ships, accuracy, wave), one per line beside their fixed labels.")]
+        [SerializeField] private TMP_Text _runValues;
         [SerializeField] private TMP_Text _scoreText;
-        [SerializeField] private TMP_Text _tableText;
         [SerializeField] private TMP_Text _codeText;
+        [Tooltip("The ten rows of the Top 10, top to bottom, and the stripe behind each one.")]
+        [SerializeField] private TMP_Text[] _rows;
+        [SerializeField] private Image[] _rowBacks;
         [SerializeField] private InitialsPicker _picker;
         [SerializeField] private ARButton _playAgain;
         [SerializeField] private Color _highlightColor = new Color(1f, 0.85f, 0.2f);
+        [SerializeField] private Color _rowColor = Color.white;
+        [SerializeField] private Color _stripeColor = new Color(0.35f, 0.42f, 0.5f, 0.18f);
+        [SerializeField] private Color _plainRowColor = new Color(0f, 0f, 0f, 0f);
+        [SerializeField] private Color _highlightStripeColor = new Color(0.85f, 0.6f, 0.1f, 0.45f);
 
         /// <summary>Raised when the player presses "Play again".</summary>
         public event Action OnPlayAgain;
@@ -54,14 +62,13 @@ namespace AlienInvaders.Views
         public void Show(MatchResult result, IReadOnlyList<MatchResult> table, int highlightIndex)
         {
             PlaceInFrontOfPlayer();
-            _runText.text =
-                "<size=85%><color=#9FB4C7>YOUR RUN</color></size>\n" +
-                $"Time   {FormatTime(result.SecondsSurvived)}\n" +
-                $"Ships   {result.ShipsDestroyed}\n" +
-                $"Accuracy   {Mathf.RoundToInt(result.Accuracy * 100f)}%\n" +
-                $"Wave   {result.WaveReached}";
-            _scoreText.text = "<size=50%><color=#9FB4C7>SCORE</color></size>\n" + result.Score.ToString(CultureInfo.InvariantCulture);
-            _codeText.text = "Record code   " + GroupedCode(PackedRecordCode.FromResult(result));
+            _runValues.text =
+                $"{FormatTime(result.SecondsSurvived)}\n" +
+                $"{result.ShipsDestroyed}\n" +
+                $"{Mathf.RoundToInt(result.Accuracy * 100f)}%\n" +
+                $"{result.WaveReached}";
+            _scoreText.text = "SCORE: <size=140%>" + result.Score.ToString(CultureInfo.InvariantCulture) + "</size>";
+            _codeText.text = "RECORD CODE: " + GroupedCode(PackedRecordCode.FromResult(result));
             _picker.Hide();
             ShowTable(table, highlightIndex);
             _panel.SetActive(true);
@@ -70,22 +77,26 @@ namespace AlienInvaders.Views
         /// <summary>Rewrites the Top 10 (after a new record is added).</summary>
         public void ShowTable(IReadOnlyList<MatchResult> table, int highlightIndex)
         {
-            var text = new StringBuilder("<size=85%><color=#9FB4C7>TOP 10</color></size>\n");
+            for (int i = 0; i < _rows.Length; i++)
+            {
+                bool highlighted = i == highlightIndex;
+                _rows[i].color = highlighted ? _highlightColor : _rowColor;
+                _rowBacks[i].color = highlighted ? _highlightStripeColor : i % 2 == 0 ? _stripeColor : _plainRowColor;
+                _rows[i].text = i < table.Count ? Row(i + 1, table[i]) : string.Empty;
+            }
             if (table.Count == 0)
             {
-                text.Append("<size=85%>No records yet</size>");
+                _rows[0].text = "<pos=8%>No records yet";
             }
+        }
 
-            string highlight = ColorUtility.ToHtmlStringRGB(_highlightColor);
-            for (int i = 0; i < table.Count; i++)
-            {
-                MatchResult entry = table[i];
-                // Fixed-width digits so the columns line up with a proportional font.
-                string row = string.Format(CultureInfo.InvariantCulture, "<mspace=0.55em>{0,2} {1,-3} {2,6} {3,5}  W{4}</mspace>",
-                    i + 1, entry.Initials, entry.Score, FormatTime(entry.SecondsSurvived), entry.WaveReached);
-                text.Append(i == highlightIndex ? $"<color=#{highlight}>{row}</color>" : row).Append('\n');
-            }
-            _tableText.text = text.ToString();
+        // One row of the table. Each column starts at a fixed place, and the numbers use fixed-width digits padded on
+        // the left, so they line up on the right like a scoreboard.
+        private static string Row(int rank, MatchResult entry)
+        {
+            return string.Format(CultureInfo.InvariantCulture,
+                "<mspace=0.6em>{0,2}</mspace><pos=17%>{1}<pos=36%><mspace=0.6em>{2,6}</mspace><pos=62%><mspace=0.6em>{3,5}</mspace><pos=86%>W{4}",
+                rank, entry.Initials, entry.Score, FormatTime(entry.SecondsSurvived), entry.WaveReached);
         }
 
         /// <summary>Asks for the initials of a new record (the "Play again" button waits until they are confirmed).</summary>
