@@ -6,7 +6,7 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// Big floating titles that tell the story of the match: the game title when the elevator opens at the top,
+    /// Big floating titles that tell the story of the match: the game logo when the elevator opens at the top,
     /// "WAVE n" with a 5 to 1 countdown (and a beep per number) while the portals open, "DEFEND THE TOWER" when the
     /// ships come out, "WAVE n CLEARED" and "TOWER CRITICAL". The panel follows the head slowly (FollowHeadPanel),
     /// so it reads like a sign in the sky, not a HUD glued to the face.
@@ -16,6 +16,10 @@ namespace AlienInvaders.Views
         [SerializeField] private GameController _game;
         [Tooltip("Canvas root (with a FollowHeadPanel), shown only while a banner is up.")]
         [SerializeField] private GameObject _panel;
+        [Tooltip("Dark strip behind the texts so they read over a bright sky.")]
+        [SerializeField] private GameObject _band;
+        [Tooltip("The game logo picture, shown alone (it has its own frame) when the elevator opens at the top.")]
+        [SerializeField] private GameObject _logo;
         [SerializeField] private TMP_Text _title;
         [SerializeField] private TMP_Text _subtitle;
         [SerializeField] private TMP_Text _countdown;
@@ -23,7 +27,6 @@ namespace AlienInvaders.Views
         [SerializeField] private AudioSource _audio;
 
         [Header("Colors")]
-        [SerializeField] private Color _gameTitleColor = new Color(1f, 0.55f, 0.2f);
         [SerializeField] private Color _infoColor = new Color(0.6f, 0.9f, 1f);
         [SerializeField] private Color _goodColor = new Color(0.45f, 1f, 0.55f);
         [SerializeField] private Color _alertColor = new Color(1f, 0.3f, 0.15f);
@@ -93,8 +96,8 @@ namespace AlienInvaders.Views
             switch (state)
             {
                 case GameState.Arrival:
-                    // First view of the burning city: the title of the game, like the opening of a film.
-                    Show("ALIEN INVADERS", "THE TOWER DEFENSE", _gameTitleColor, Balance.ArrivalSeconds);
+                    // First view of the burning city: the logo of the game, like the opening of a film.
+                    ShowLogo(Balance.ArrivalSeconds);
                     break;
                 case GameState.Critical:
                     Show("TOWER CRITICAL", "IT WILL NOT HOLD MUCH LONGER", _alertColor, 2.5f);
@@ -158,7 +161,22 @@ namespace AlienInvaders.Views
             _title.text = title;
             _title.color = color;
             _subtitle.text = subtitle;
+            Open(false, seconds);
             _subtitle.gameObject.SetActive(subtitle.Length > 0);
+        }
+
+        private void ShowLogo(float seconds)
+        {
+            Open(true, seconds);
+        }
+
+        // Puts up either the logo or the texts (over their dark band) for some seconds.
+        private void Open(bool logo, float seconds)
+        {
+            _logo.SetActive(logo);
+            _band.SetActive(!logo);
+            _title.gameObject.SetActive(!logo);
+            _subtitle.gameObject.SetActive(!logo);
             _countdown.gameObject.SetActive(false);
             _hideTime = Time.time + seconds;
             // Activating the panel places it in front of the player (FollowHeadPanel snaps on enable).
