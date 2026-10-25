@@ -44,7 +44,7 @@ Material:
     - _Cutoff: 0.5
     - _DstBlend: 0
     - _DstBlendAlpha: 0
-    - _QueueOffset: 0
+    - _QueueOffset: 1
     - _SampleGI: 0
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
