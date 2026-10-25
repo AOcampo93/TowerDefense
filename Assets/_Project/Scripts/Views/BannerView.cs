@@ -7,8 +7,10 @@ namespace AlienInvaders.Views
 {
     /// <summary>
     /// Big floating titles that tell the story of the match: the game logo when the elevator opens at the top,
-    /// "WAVE n" with a 5 to 1 countdown (and a beep per number) while the portals open, "DEFEND THE TOWER" when the
-    /// ships come out, "WAVE n CLEARED" and "TOWER CRITICAL". The panel follows the head slowly (FollowHeadPanel),
+    /// "WAVE n" with a countdown (and a beep per number) while the portals open, "DEFEND THE TOWER" when the
+    /// ships come out, "WAVE n CLEARED" and "TOWER CRITICAL". The texts are shown on the screens of a floating command
+    /// console (a 3D model): the titles on its wide screen and the countdown on the small screen of the subpanel below.
+    /// The console pops in quickly instead of appearing at once. The panel follows the head slowly (FollowHeadPanel),
     /// so it reads like a sign in the sky, not a HUD glued to the face.
     /// </summary>
     public class BannerView : MonoBehaviour
@@ -16,8 +18,8 @@ namespace AlienInvaders.Views
         [SerializeField] private GameController _game;
         [Tooltip("Canvas root (with a FollowHeadPanel), shown only while a banner is up.")]
         [SerializeField] private GameObject _panel;
-        [Tooltip("Dark strip behind the texts so they read over a bright sky.")]
-        [SerializeField] private GameObject _band;
+        [Tooltip("The command console with its screens and the texts on them (hidden while the logo shows).")]
+        [SerializeField] private Transform _console;
         [Tooltip("The game logo picture, shown alone (it has its own frame) when the elevator opens at the top.")]
         [SerializeField] private GameObject _logo;
         [SerializeField] private TMP_Text _title;
@@ -35,11 +37,15 @@ namespace AlienInvaders.Views
         [Tooltip("Extra size of each countdown number when it appears; it shrinks back in a moment.")]
         [SerializeField] private float _countPunch = 0.4f;
         [SerializeField] private float _punchSeconds = 0.25f;
+        [Tooltip("Seconds the console takes to pop in, and the size it starts from.")]
+        [SerializeField] private float _popSeconds = 0.2f;
+        [SerializeField] private float _popFrom = 0.75f;
 
         private float _hideTime;
         private bool _counting;
         private int _shownCount;
         private float _punchTimer;
+        private float _popTimer;
 
         private void Awake()
         {
@@ -79,6 +85,15 @@ namespace AlienInvaders.Views
             if (!_panel.activeSelf)
             {
                 return;
+            }
+
+            if (_popTimer > 0f)
+            {
+                _popTimer = Mathf.Max(0f, _popTimer - Time.deltaTime);
+                float t = 1f - _popTimer / _popSeconds;
+                // Ease out: fast at first, settling softly at full size.
+                float scale = Mathf.Lerp(_popFrom, 1f, 1f - (1f - t) * (1f - t));
+                _console.localScale = new Vector3(scale, scale, scale);
             }
 
             if (_counting)
@@ -170,11 +185,16 @@ namespace AlienInvaders.Views
             Open(true, seconds);
         }
 
-        // Puts up either the logo or the texts (over their dark band) for some seconds.
+        // Puts up either the logo or the console with the texts for some seconds.
         private void Open(bool logo, float seconds)
         {
             _logo.SetActive(logo);
-            _band.SetActive(!logo);
+            _console.gameObject.SetActive(!logo);
+            if (!logo && !_panel.activeSelf)
+            {
+                _popTimer = _popSeconds;
+                _console.localScale = new Vector3(_popFrom, _popFrom, _popFrom);
+            }
             _title.gameObject.SetActive(!logo);
             _subtitle.gameObject.SetActive(!logo);
             _countdown.gameObject.SetActive(false);
