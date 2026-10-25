@@ -23,7 +23,12 @@ namespace AlienInvaders.Core
 
         /// <summary>Most ships of this wave attacking the tower at once; the others keep raiding the city.</summary>
         public int MaxTowerAttackers;
+
+        /// <summary>Speed of the bombers compared with wave 1.</summary>
         public float SpeedMultiplier;
+
+        /// <summary>Speed of the fighters compared with wave 1 (they speed up faster than the bombers).</summary>
+        public float FighterSpeedMultiplier;
         public float AimTimeFighter;
         public float AimTimeBomber;
         public float BomberRatio;

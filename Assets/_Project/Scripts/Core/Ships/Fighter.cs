@@ -6,7 +6,7 @@ namespace AlienInvaders.Core.Ships
     /// <summary>
     /// Fast, fragile ship that darts like an alien craft: often it splits its way to the station into two straight
     /// dashes, stopping for an instant at a turning point off to one side, so it is hard to lead with the weapon.
-    /// Low damage, but it appears in large numbers.
+    /// Low damage, but it appears in large numbers, and every wave it flies faster than the last.
     /// </summary>
     public class Fighter : EnemyShip
     {
@@ -16,9 +16,9 @@ namespace AlienInvaders.Core.Ships
             Type = ShipType.Fighter;
             Health = Balance.FighterHealth;
             MaxHealth = Health;
-            Speed = Balance.FighterSpeed * wave.SpeedMultiplier;
+            Speed = Balance.FighterSpeed * wave.FighterSpeedMultiplier;
             LaunchSpeed = Balance.FighterLaunchSpeed;
-            Acceleration = Balance.FighterAcceleration * wave.SpeedMultiplier;
+            Acceleration = Balance.FighterAcceleration * wave.FighterSpeedMultiplier;
             DamageToTower = Balance.FighterDamage;
             AimTime = wave.AimTimeFighter;
         }

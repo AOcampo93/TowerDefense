@@ -71,7 +71,9 @@ How to run:
 * Energy weapon with overheating, haptics and a cyan laser
 * Enemy ships (Fighter and Bomber) with object pooling and aiming lasers
 * Tower tilt, staged drops and shake driven by the motion bus
-* Portals and endless waves with short breaks between them
+* Portals and endless waves with only a few seconds of rest between them, ships pouring out one after another and fighters that get faster every wave
+* Bomber raids with huge blasts on the city that the player hears and feels on the platform
+* Power ups left by some bombers that make the weapon stronger for a few seconds
 * Wrist radar and spatial audio
 * Critical state, emergency rescue elevator and results panels
 * Local Top 10 with arcade style initials and a shareable record code

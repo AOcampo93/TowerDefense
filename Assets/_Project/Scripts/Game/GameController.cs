@@ -44,6 +44,7 @@ namespace AlienInvaders.Game
         public TowerIntegrity Tower { get; private set; }
         public TowerMotionModel TowerMotion { get; private set; }
         public WeaponHeat Weapon { get; private set; }
+        public WeaponBoost Boost { get; private set; }
         public ScoreSystem Score { get; private set; }
         public WaveGenerator Waves { get; private set; }
         public WaveCycle WaveCycle { get; private set; }
@@ -56,6 +57,7 @@ namespace AlienInvaders.Game
             Tower = new TowerIntegrity();
             TowerMotion = new TowerMotionModel(Tower);
             Weapon = new WeaponHeat();
+            Boost = new WeaponBoost();
             Score = new ScoreSystem();
             Waves = new WaveGenerator(Environment.TickCount);
             WaveCycle = new WaveCycle(Waves);
@@ -172,6 +174,7 @@ namespace AlienInvaders.Game
 
             WaveCycle.Tick(Time.deltaTime, _portals.ShipsLeft);
             Score.Tick(Time.deltaTime);
+            Boost.Tick(Time.deltaTime);
 
             // The motion model runs every frame (smooth tilt and drops); outputs get a sample 20 times per second,
             // the rate a physical platform and the recording use.
@@ -257,6 +260,7 @@ namespace AlienInvaders.Game
             Tower.Reset();
             TowerMotion.Reset();
             Weapon.Reset();
+            Boost.Reset();
             Score.Reset();
             WaveCycle.Reset();
             _ships.ClearAll();

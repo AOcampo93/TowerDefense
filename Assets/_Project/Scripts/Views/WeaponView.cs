@@ -9,6 +9,8 @@ namespace AlienInvaders.Views
     /// appears when the elevator opens, every bolt of a burst draws a thick cyan beam with a white hot core, the energy
     /// coils around its muzzle glow with the heat (cyan, then orange, then red) and blink while the weapon is locked.
     /// The heat is shown on the gun itself instead of a HUD, so the player never looks away from the ships.
+    /// While a power up lasts, the beam turns lime green and thicker and the coils glow the same color, blinking
+    /// when the boost is about to end.
     /// Haptics: a firm tick per shot, a full strength kick when the weapon overheats and then a pulse on every blink
     /// of the coils until the lock ends, so the hand knows the weapon is still locked without looking at it.
     /// </summary>
@@ -43,6 +45,16 @@ namespace AlienInvaders.Views
         [Tooltip("Blinks per second of the coils while the weapon is locked.")]
         [SerializeField] private float _lockBlinkRate = 5f;
 
+        [Header("Power up")]
+        [SerializeField] private Color _boostBeamColor = new Color(0.45f, 1f, 0.1f);
+        [SerializeField] private Color _boostCoreColor = new Color(0.9f, 1f, 0.7f);
+        [Tooltip("The boosted beam is this much thicker.")]
+        [SerializeField] private float _boostWidthScale = 1.8f;
+        [Tooltip("Seconds before the boost ends when the coils start blinking.")]
+        [SerializeField] private float _boostEndingSeconds = 2f;
+        [SerializeField] private float _boostPulseAmplitude = 1f;
+        [SerializeField] private float _boostPulseSeconds = 0.3f;
+
         [Header("Haptics")]
         [SerializeField] private float _shotPulseAmplitude = 0.7f;
         [SerializeField] private float _shotPulseSeconds = 0.05f;
@@ -58,6 +70,10 @@ namespace AlienInvaders.Views
         [SerializeField] private float _shotVolume = 0.5f;
 
         private MaterialPropertyBlock _coilBlock;
+        private MaterialPropertyBlock _beamBlock;
+        private MaterialPropertyBlock _beamCoreBlock;
+        private MaterialPropertyBlock _plainBlock;
+        private float _widthScale = 1f;
         private ParticleEffect _muzzleSparks;
         private Color _shownCoilColor;
         private float _beamTimer;
@@ -67,6 +83,11 @@ namespace AlienInvaders.Views
         private void Awake()
         {
             _coilBlock = new MaterialPropertyBlock();
+            _beamBlock = new MaterialPropertyBlock();
+            _beamBlock.SetColor(BaseColorId, _boostBeamColor);
+            _beamCoreBlock = new MaterialPropertyBlock();
+            _beamCoreBlock.SetColor(BaseColorId, _boostCoreColor);
+            _plainBlock = new MaterialPropertyBlock();
             _muzzleSparks = ParticleEffect.Attach(_muzzleSparksPrefab, _muzzleFlash.transform.parent, _muzzleSparksScale, false);
             SetVisible(false);
         }
@@ -87,6 +108,8 @@ namespace AlienInvaders.Views
         {
             // The core weapon is created in GameController.Awake, so it is only safe to subscribe here.
             _game.Weapon.OnOverheated += HandleOverheated;
+            _game.Boost.OnStarted += HandleBoostStarted;
+            _game.Boost.OnEnded += HandleBoostEnded;
         }
 
         private void OnDestroy()
@@ -94,6 +117,11 @@ namespace AlienInvaders.Views
             if (_game != null && _game.Weapon != null)
             {
                 _game.Weapon.OnOverheated -= HandleOverheated;
+            }
+            if (_game != null && _game.Boost != null)
+            {
+                _game.Boost.OnStarted -= HandleBoostStarted;
+                _game.Boost.OnEnded -= HandleBoostEnded;
             }
         }
 
@@ -108,8 +136,8 @@ namespace AlienInvaders.Views
             {
                 _beamTimer -= Time.deltaTime;
                 float left = Mathf.Clamp01(_beamTimer / _beamSeconds);
-                _beam.widthMultiplier = _beamWidth * left;
-                _beamCore.widthMultiplier = _beamCoreWidth * left;
+                _beam.widthMultiplier = _beamWidth * _widthScale * left;
+                _beamCore.widthMultiplier = _beamCoreWidth * _widthScale * left;
                 if (_beamTimer <= 0f)
                 {
                     _beam.enabled = false;
@@ -121,7 +149,7 @@ namespace AlienInvaders.Views
             // The coils and the lock pulses share one blink, so the hand feels exactly what the eyes see.
             bool blinkOn = _game.Weapon.Overheated && Mathf.Repeat(Time.time * _lockBlinkRate, 1f) < 0.5f;
             UpdateLockHaptics(blinkOn);
-            SetCoilColor(HeatColor(_game.Weapon, blinkOn));
+            SetCoilColor(_game.Boost.Active ? BoostColor() : HeatColor(_game.Weapon, blinkOn));
         }
 
         private void HandleStateChanged(GameState state)
@@ -136,11 +164,11 @@ namespace AlienInvaders.Views
             // One beam is enough: at 10 bolts per second a beam is gone before the next bolt.
             _beam.SetPosition(0, from);
             _beam.SetPosition(1, to);
-            _beam.widthMultiplier = _beamWidth;
+            _beam.widthMultiplier = _beamWidth * _widthScale;
             _beam.enabled = true;
             _beamCore.SetPosition(0, from);
             _beamCore.SetPosition(1, to);
-            _beamCore.widthMultiplier = _beamCoreWidth;
+            _beamCore.widthMultiplier = _beamCoreWidth * _widthScale;
             _beamCore.enabled = true;
             _muzzleFlash.SetActive(true);
             _muzzleSparks?.Restart();
@@ -160,6 +188,31 @@ namespace AlienInvaders.Views
             ControllerHaptics.PulseRight(_overheatPulseAmplitude, _overheatPulseSeconds);
             _audio.PlayOneShot(_sounds.Overheat);
             _overheatKickTimer = _overheatPulseSeconds;
+        }
+
+        // A power up was shot: green, thicker beam, a chime and a kick in the hand.
+        private void HandleBoostStarted()
+        {
+            _widthScale = _boostWidthScale;
+            _beam.SetPropertyBlock(_beamBlock);
+            _beamCore.SetPropertyBlock(_beamCoreBlock);
+            _audio.PlayOneShot(_sounds.Go);
+            ControllerHaptics.PulseRight(_boostPulseAmplitude, _boostPulseSeconds);
+        }
+
+        private void HandleBoostEnded()
+        {
+            _widthScale = 1f;
+            _beam.SetPropertyBlock(_plainBlock);
+            _beamCore.SetPropertyBlock(_plainBlock);
+        }
+
+        // Boost color on the coils, blinking in its last seconds so the player knows it is about to end.
+        private Color BoostColor()
+        {
+            bool ending = _game.Boost.TimeLeft < _boostEndingSeconds;
+            bool on = !ending || Mathf.Repeat(Time.time * _lockBlinkRate, 1f) < 0.5f;
+            return on ? _boostBeamColor : _lockedOffColor;
         }
 
         private void UpdateLockHaptics(bool blinkOn)

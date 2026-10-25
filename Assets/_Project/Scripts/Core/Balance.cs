@@ -89,43 +89,57 @@ namespace AlienInvaders.Core
         public const int ShotDamage = 1;
 
         // ---------- Waves ----------
+        /// <summary>Portals of the first wave (two, so the invasion comes from two sides at once); one more every two waves.</summary>
+        public const int FirstWavePortals = 2;
         public const int MaxPortals = 4;
         public const float MaxSpeedMultiplier = 2f;
         public const float SpeedIncreasePerWave = 0.05f;
+
+        /// <summary>
+        /// Fighters get faster every wave much more than bombers (10 % against 5 %, up to 2.2 times their first
+        /// speed), so they get harder to aim at as the match goes on while the bombers stay slow and heavy.
+        /// </summary>
+        public const float FighterSpeedIncreasePerWave = 0.1f;
+        public const float MaxFighterSpeedMultiplier = 2.2f;
         public const float AimTimeDecreasePerWave = 0.08f;
         public const float MinAimTime = 0.6f;
         public const float BomberRatioPerWave = 0.05f;
         public const float MaxBomberRatio = 0.4f;
-        public const float PeaceSeconds = 3f;
 
         /// <summary>
-        /// Shortest time from the start of an attack to the end of the calm after it (seconds). A player who clears a
-        /// wave quickly earns a longer rest instead of meeting the next, harder wave sooner, so the difficulty grows
-        /// with time and skill keeps the tower standing longer.
+        /// Calm after a cleared wave before the next portals open (seconds). With the portals opening that is only a
+        /// few seconds of rest: the fight is constant and the player never waits for the next wave.
         /// </summary>
-        public const float MinWaveSeconds = 35f;
+        public const float PeaceSeconds = 2f;
 
         /// <summary>
         /// Longest attack (seconds): when the sky is not cleared in time, the next wave opens its portals anyway and the
         /// ships still flying stay. The difficulty keeps growing with time even for a player who cannot keep up.
         /// </summary>
-        public const float MaxWaveSeconds = 45f;
-        public const float PortalOpeningSeconds = 5f;
+        public const float MaxWaveSeconds = 30f;
+        public const float PortalOpeningSeconds = 4f;
 
-        /// <summary>Seconds between two ships coming out of the same portal, so each one has flown clear of it.</summary>
-        public const float SpawnIntervalSeconds = 2.5f;
+        /// <summary>
+        /// Seconds between two ships coming out of the same portal: they pour out one after another, like an invasion.
+        /// </summary>
+        public const float SpawnIntervalSeconds = 0.8f;
+
+        /// <summary>
+        /// How far (meters) the last ship must have flown from a portal before the next one comes out of it, so two
+        /// hulls never come out on top of each other.
+        /// </summary>
+        public const float PortalClearance = 30f;
 
         /// <summary>Ships in the first wave; every wave brings this many more.</summary>
-        public const int FirstWaveShips = 4;
+        public const int FirstWaveShips = 6;
         public const int ShipsAddedPerWave = 2;
 
         /// <summary>
-        /// Most ships flying at the same time: 3 in the first wave, one more every wave, up to 8. The rest wait in
-        /// their portals, so a wave lasts longer instead of crowding the sky, and a skilled player who shoots them
-        /// down quickly is the one who keeps the sky clear.
+        /// Most ships flying at the same time: 5 in the first wave, one more every wave, up to 10. A full sky from the
+        /// start, so the player does not know where to begin; the rest wait in their portals.
         /// </summary>
-        public const int FirstWaveShipsInAir = 3;
-        public const int MaxShipsInAir = 8;
+        public const int FirstWaveShipsInAir = 5;
+        public const int MaxShipsInAir = 10;
 
         /// <summary>
         /// Distance (meters) a ship keeps from the others when it picks where to stop and how to get there. Ships are
@@ -135,27 +149,37 @@ namespace AlienInvaders.Core
 
         // ---------- Raids on the city ----------
         /// <summary>
-        /// Raids each ship makes on the city before it turns on the tower: 3 in the first three waves, 2 in the next
-        /// three, then 1. Meanwhile the tower is safe, so a player who brings the ships down over the city keeps the
+        /// Raids each ship makes on the city before it turns on the tower: 3 in the first four waves, 2 in the next
+        /// four, then 1. Meanwhile the tower is safe, so a player who brings the ships down over the city keeps the
         /// tower whole, and the match has time to grow harder before the tower is in danger. In simulated matches with
-        /// the real rules, a player who never shoots lasts about 4 minutes of fight, a weak player 5, an average one 6
-        /// and an expert 9 (plus the ride up).
+        /// the real rules (fast waves, power ups), a player who never shoots lasts about 4 minutes of fight, a weak
+        /// player 4.4, an average one 5.2 and an expert 7.2 (plus the ride up).
         /// </summary>
         public const int FirstWaveCityRuns = 3;
-        public const int WavesPerCityRunLost = 3;
+        public const int WavesPerCityRunLost = 4;
         public const int MinCityRuns = 1;
 
         /// <summary>
-        /// Most ships attacking the tower at the same time: 1 in the first two waves, one more every two waves, up to
-        /// 4. A ship that finishes its raids while the tower is taken keeps raiding the city until there is room, so
+        /// Most ships attacking the tower at the same time: 1 in the first three waves, one more every three waves, up
+        /// to 4. A ship that finishes its raids while the tower is taken keeps raiding the city until there is room, so
         /// the damage to the tower grows wave after wave instead of every ship of a big wave turning on it at once.
         /// </summary>
         public const int FirstWaveTowerAttackers = 1;
+        public const int WavesPerTowerAttacker = 3;
         public const int MaxTowerAttackers = 4;
 
-        /// <summary>Shots a ship fires down at the city on each raid, and the seconds between them.</summary>
+        /// <summary>Shots a fighter fires down at the city on each raid, and the seconds between them.</summary>
         public const int CityShotsPerRun = 3;
         public const float CityShotInterval = 0.7f;
+
+        /// <summary>
+        /// A bomber drops one heavy bomb per raid instead of a few shots: a huge blast on the city that the player
+        /// hears and feels on the platform (BombJolt), even far away.
+        /// </summary>
+        public const int BomberBombsPerRun = 1;
+
+        /// <summary>Shake (0 to 1) of the platform when a bomb lands on the city: a jolt, lighter than a hit on the tower.</summary>
+        public const float BombJolt = 0.45f;
 
         /// <summary>
         /// Where ships stop over the city (meters, relative to the player platform): farther out than the tower
@@ -172,7 +196,7 @@ namespace AlienInvaders.Core
         /// cruise speed, so a new ship bursts into the sky instead of drifting out.
         /// </summary>
         public const float FighterLaunchSpeed = 60f;
-        public const float BomberLaunchSpeed = 36f;
+        public const float BomberLaunchSpeed = 45f;
         public const float LaunchBraking = 35f;
 
         /// <summary>Bolts a fighter takes (half a second of burst).</summary>
@@ -222,6 +246,20 @@ namespace AlienInvaders.Core
         /// </summary>
         public const float MinImpactHeight = -20f;
         public const float MaxImpactHeight = -1.5f;
+
+        // ---------- Power ups ----------
+        /// <summary>
+        /// Power ups come only from the big ships: from this wave on (or earlier, whenever the sky holds PowerUpCrowd
+        /// ships or more), every BombersPerPowerUp-th bomber brought down leaves glowing cubes right where it blew up.
+        /// They stay only PowerUpFloatSeconds; shooting them makes every bolt hit BoostDamageMultiplier times harder
+        /// for BoostSeconds (and cools the weapon), the help the player needs when the waves grow bigger than their aim.
+        /// </summary>
+        public const int PowerUpFirstWave = 5;
+        public const int PowerUpCrowd = 8;
+        public const int BombersPerPowerUp = 2;
+        public const float PowerUpFloatSeconds = 4f;
+        public const float BoostSeconds = 8f;
+        public const int BoostDamageMultiplier = 3;
 
         // ---------- Score ----------
         public const int PointsPerSecond = 10;

@@ -207,7 +207,7 @@ namespace AlienInvaders.Tests
                 for (float time = 0f; time < 120f; time += 0.05f)
                 {
                     Vector3 exit = portals[portal % portals.Count].ToPosition();
-                    if (ships.Count < wave.MaxShipsInAir && time >= nextRelease && airspace.IsClear(exit, Balance.ShipSeparation))
+                    if (ships.Count < wave.MaxShipsInAir && time >= nextRelease && airspace.IsClear(exit, Balance.PortalClearance))
                     {
                         ShipType type = ships.Count % 4 == 3 ? ShipType.Bomber : ShipType.Fighter;
                         EnemyShip ship = ShipFactory.Create(type, exit, wave, random, airspace);
@@ -241,14 +241,33 @@ namespace AlienInvaders.Tests
             Vector3 exit = EnemyShip.FromAzimuth(30f, 160f, 30f);
             EnemyShip ship = ShipFactory.Create(ShipType.Fighter, exit, WaveGenerator.Build(1, 1), new Random(1), airspace);
             airspace.Add(ship);
-            Assert.IsFalse(airspace.IsClear(exit, Balance.ShipSeparation));
-            for (int i = 0; i < 200 && !airspace.IsClear(exit, Balance.ShipSeparation); i++)
+            Assert.IsFalse(airspace.IsClear(exit, Balance.PortalClearance));
+            for (int i = 0; i < 200 && !airspace.IsClear(exit, Balance.PortalClearance); i++)
             {
                 ship.Tick(0.05f);
             }
-            Assert.IsTrue(airspace.IsClear(exit, Balance.ShipSeparation));
+            Assert.IsTrue(airspace.IsClear(exit, Balance.PortalClearance));
             airspace.Remove(ship);
             Assert.AreEqual(0, airspace.Count);
+        }
+
+        [Test]
+        public void Bomber_DropsOneBombPerRaid()
+        {
+            for (int seed = 1; seed <= 5; seed++)
+            {
+                WaveConfig wave = WaveGenerator.Build(2, seed);
+                EnemyShip bomber = ShipFactory.Create(ShipType.Bomber, EnemyShip.FromAzimuth(seed * 51f, 160f, 30f), wave, new Random(seed));
+                int bombs = 0;
+                int bombsBeforeAiming = -1;
+                bomber.OnCityShot += _ => bombs++;
+                bomber.OnAimStarted += _ => bombsBeforeAiming = bombs;
+                for (int i = 0; i < 20000 && bombsBeforeAiming < 0; i++)
+                {
+                    bomber.Tick(0.02f);
+                }
+                Assert.AreEqual(wave.CityRuns * Balance.BomberBombsPerRun, bombsBeforeAiming, $"seed {seed}");
+            }
         }
 
         [Test]
@@ -351,6 +370,18 @@ namespace AlienInvaders.Tests
             MotionSample s = model.Tick(Balance.DropWarningSeconds + Balance.DropDuration + 0.01f);
             float expected = -(Balance.DropDistances[0] + Balance.DropDistances[1]);
             Assert.AreEqual(expected, s.Heave, 0.001f);
+        }
+
+        [Test]
+        public void BombJolt_ShakesThePlatform_WithoutHurtingTheTower()
+        {
+            var tower = new TowerIntegrity();
+            var model = new TowerMotionModel(tower);
+            model.Jolt(Balance.BombJolt);
+            MotionSample s = model.Tick(0.01f);
+            Assert.Greater(s.Shake, 0f);
+            Assert.AreEqual(Balance.MaxIntegrity, tower.Integrity, 0.001f);
+            Assert.AreEqual(0f, model.Tick(2f).Shake, 0.001f);
         }
 
         [Test]

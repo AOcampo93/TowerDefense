@@ -67,7 +67,8 @@ namespace AlienInvaders.Game
             bool hitTarget = false;
             if (hitSomething && hit.collider.TryGetComponent(out IShootable target))
             {
-                target.ReceiveHit(Balance.ShotDamage, hit.point);
+                // A power up makes every bolt hit harder for a few seconds.
+                target.ReceiveHit(_game.Boost.ShotDamage, hit.point);
                 hitTarget = true;
             }
 

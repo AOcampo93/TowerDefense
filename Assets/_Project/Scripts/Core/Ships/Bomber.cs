@@ -4,7 +4,8 @@ using System.Numerics;
 namespace AlienInvaders.Core.Ships
 {
     /// <summary>
-    /// Slow, armored ship that flies straight to its station and fires a heavy shot.
+    /// Slow, armored ship that flies straight to its station and fires a heavy shot. Over the city it drops one heavy
+    /// bomb per raid, a huge blast the player hears and feels on the platform.
     /// It takes a long burst, so the player must decide whether to focus it or the fighters.
     /// </summary>
     public class Bomber : EnemyShip
@@ -20,6 +21,7 @@ namespace AlienInvaders.Core.Ships
             Acceleration = Balance.BomberAcceleration * wave.SpeedMultiplier;
             DamageToTower = Balance.BomberDamage;
             AimTime = wave.AimTimeBomber;
+            CityShotsPerRun = Balance.BomberBombsPerRun;
         }
 
         /// <summary>One slow straight glide, heavy to start and to stop (it only turns to go around the tower):

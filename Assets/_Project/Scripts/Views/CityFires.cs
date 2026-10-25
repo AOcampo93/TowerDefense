@@ -8,7 +8,8 @@ namespace AlienInvaders.Views
     /// <summary>
     /// The fires the alien ships start in the city. Every ship that stays alive keeps firing down at the buildings,
     /// so the fewer ships the player brings down, the more of the city burns: the roof blows up, then fire and a
-    /// column of smoke stay there for the rest of the match, and a roof hit again burns bigger. Fires are made while
+    /// column of smoke stay there for the rest of the match, and a roof hit again burns bigger. A bomber's bomb is a
+    /// huge blast with smaller ones around it and leaves a bigger fire. Fires are made while
     /// loading and reused (no new objects during the fight); a new match puts them all out.
     /// </summary>
     public class CityFires : MonoBehaviour
@@ -28,6 +29,16 @@ namespace AlienInvaders.Views
         [SerializeField] private float _startScale = 1.2f;
         [SerializeField] private float _growth = 0.35f;
         [SerializeField] private float _maxScale = 3.5f;
+
+        [Header("Bombs")]
+        [Tooltip("Diameter of a bomb's blast (meters), and of the smaller blasts thrown around it.")]
+        [SerializeField] private float _bombExplosionSize = 100f;
+        [SerializeField] private float _bombDebrisSize = 35f;
+        [Tooltip("How far from the bomb the smaller blasts go off (meters).")]
+        [SerializeField] private float _bombSpread = 30f;
+        [SerializeField] private int _bombDebris = 3;
+        [Tooltip("Size of the fire a bomb leaves (and how much a burning roof grows when a bomb lands on it).")]
+        [SerializeField] private float _bombFireScale = 2.4f;
 
         private readonly List<int> _candidates = new List<int>();
         private GameObject[] _fires;
@@ -82,12 +93,37 @@ namespace AlienInvaders.Views
         public void Ignite(Vector3 position)
         {
             _explosions.Spawn(position, _explosionSize);
+            SetOnFire(position, _startScale, _growth);
+        }
+
+        /// <summary>
+        /// A bomber's bomb at a world position: one huge blast rising over the roofs with a second one above it, like
+        /// a mushroom (big enough to be seen through the haze far below), smaller blasts thrown around it, and a big
+        /// fire left behind.
+        /// </summary>
+        public void Bomb(Vector3 position)
+        {
+            _explosions.Spawn(position + Vector3.up * (_bombExplosionSize * 0.2f), _bombExplosionSize);
+            _explosions.Spawn(position + Vector3.up * (_bombExplosionSize * 0.75f), _bombExplosionSize * 0.6f);
+            float start = Random.Range(0f, 360f);
+            for (int i = 0; i < _bombDebris; i++)
+            {
+                float angle = start + i * 360f / _bombDebris + Random.Range(-25f, 25f);
+                Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * (_bombSpread * Random.Range(0.6f, 1f));
+                _explosions.Spawn(position + offset, _bombDebrisSize);
+            }
+            SetOnFire(position, _bombFireScale, _bombFireScale - _startScale);
+        }
+
+        // A new fire on the roof, or a bigger one if the roof already burns.
+        private void SetOnFire(Vector3 position, float startScale, float growth)
+        {
             Vector3 local = _city.Root.InverseTransformPoint(position);
             for (int i = 0; i < _burning; i++)
             {
                 if ((_fires[i].transform.localPosition - local).sqrMagnitude < 25f)
                 {
-                    Grow(_fires[i].transform);
+                    Grow(_fires[i].transform, growth);
                     return;
                 }
             }
@@ -95,19 +131,19 @@ namespace AlienInvaders.Views
             {
                 GameObject fire = _fires[_burning++];
                 fire.transform.localPosition = local;
-                fire.transform.localScale = Vector3.one * _startScale;
+                fire.transform.localScale = Vector3.one * startScale;
                 fire.SetActive(true);
             }
             else
             {
                 // Every fire is already lit: the city burns harder instead.
-                Grow(_fires[Random.Range(0, _fires.Length)].transform);
+                Grow(_fires[Random.Range(0, _fires.Length)].transform, growth);
             }
         }
 
-        private void Grow(Transform fire)
+        private void Grow(Transform fire, float growth)
         {
-            fire.localScale = Vector3.one * Mathf.Min(_maxScale, fire.localScale.x + _growth);
+            fire.localScale = Vector3.one * Mathf.Min(_maxScale, fire.localScale.x + growth);
         }
 
         private void HandleStateChanged(GameState state)

@@ -5,7 +5,7 @@ namespace AlienInvaders.Core
 {
     /// <summary>
     /// Creates each wave from a few formulas, so difficulty grows smoothly: more portals,
-    /// more ships (and more of them in the air at once), faster ships, less time to react and fewer raids on the city
+    /// more ships (and more of them in the air at once), faster ships (fighters most of all), less time to react and fewer raids on the city
     /// before the ships turn on the tower. A seed makes every run reproducible,
     /// which allows a future "daily challenge" where everybody plays the same waves.
     /// </summary>
@@ -43,12 +43,13 @@ namespace AlienInvaders.Core
             return new WaveConfig
             {
                 Number = n,
-                Portals = Math.Min(Balance.MaxPortals, 1 + step / 2), // integer division: 1,1,2,2,3,3,4...
-                TotalShips = Balance.FirstWaveShips + Balance.ShipsAddedPerWave * step, // 4, 6, 8, 10...
-                MaxShipsInAir = Math.Min(Balance.MaxShipsInAir, Balance.FirstWaveShipsInAir + step), // 3, 4, 5... 8
-                CityRuns = Math.Max(Balance.MinCityRuns, Balance.FirstWaveCityRuns - step / Balance.WavesPerCityRunLost), // 3, 3, 3, 2, 2, 2, 1...
-                MaxTowerAttackers = Math.Min(Balance.MaxTowerAttackers, Balance.FirstWaveTowerAttackers + step / 2), // 1, 1, 2, 2, 3, 3, 4
+                Portals = Math.Min(Balance.MaxPortals, Balance.FirstWavePortals + step / 2), // integer division: 2,2,3,3,4...
+                TotalShips = Balance.FirstWaveShips + Balance.ShipsAddedPerWave * step, // 6, 8, 10, 12...
+                MaxShipsInAir = Math.Min(Balance.MaxShipsInAir, Balance.FirstWaveShipsInAir + step), // 5, 6, 7... 10
+                CityRuns = Math.Max(Balance.MinCityRuns, Balance.FirstWaveCityRuns - step / Balance.WavesPerCityRunLost), // 3, 3, 3, 3, 2, 2, 2, 2, 1...
+                MaxTowerAttackers = Math.Min(Balance.MaxTowerAttackers, Balance.FirstWaveTowerAttackers + step / Balance.WavesPerTowerAttacker), // 1, 1, 1, 2, 2, 2, 3...
                 SpeedMultiplier = Math.Min(Balance.MaxSpeedMultiplier, 1f + Balance.SpeedIncreasePerWave * step),
+                FighterSpeedMultiplier = Math.Min(Balance.MaxFighterSpeedMultiplier, 1f + Balance.FighterSpeedIncreasePerWave * step),
                 AimTimeFighter = Math.Max(Balance.MinAimTime, Balance.FighterAimTime - Balance.AimTimeDecreasePerWave * step),
                 AimTimeBomber = Math.Max(Balance.MinAimTime, Balance.BomberAimTime - Balance.AimTimeDecreasePerWave * step),
                 BomberRatio = Math.Min(Balance.MaxBomberRatio, Balance.BomberRatioPerWave * step),

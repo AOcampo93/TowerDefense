@@ -129,15 +129,16 @@ namespace AlienInvaders.Game
             }
         }
 
-        // A raid shot: a roof under the ship blows up and starts burning.
+        // A raid shot: a roof under the ship blows up and starts burning (a bomber's bomb blows up a whole block).
         private void HandleCityShot(EnemyShip ship)
         {
             if (_spawner.TryPickCityTarget(transform.position, out Vector3 target))
             {
+                bool bomb = ship.Type == ShipType.Bomber;
                 _cityTarget = target;
                 _hasCityTarget = true;
-                _view.ShowFire(target, true);
-                _spawner.HandleCityShot(target);
+                _view.ShowFire(target, true, bomb);
+                _spawner.HandleCityShot(target, bomb);
             }
         }
 

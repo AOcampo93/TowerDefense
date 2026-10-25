@@ -3,11 +3,10 @@ using System;
 namespace AlienInvaders.Core
 {
     /// <summary>
-    /// Rhythm of the game: when a wave is cleared there are a few seconds of peace, then the
-    /// portals open (visible on the radar) and finally the ships attack. This calm moment lets
-    /// the player rest their arms and builds tension before every wave. Waves come with time: a wave cleared quickly
-    /// earns a longer calm (Balance.MinWaveSeconds), and a wave that is not cleared in time (Balance.MaxWaveSeconds)
-    /// lets the next one open its portals while its own ships keep flying.
+    /// Rhythm of the game: when a wave is cleared there are only a couple of seconds of peace, then the
+    /// portals open (visible on the radar, with a countdown) and the ships pour out. The fight is constant: the only
+    /// rest is the one the player earns by clearing the sky, and it is short. A wave that is not cleared in time
+    /// (Balance.MaxWaveSeconds) lets the next one open its portals while its own ships keep flying.
     /// </summary>
     public class WaveCycle
     {
@@ -70,7 +69,7 @@ namespace AlienInvaders.Core
                     {
                         OnWaveCleared?.Invoke(CurrentWave);
                         Phase = WavePhase.Peace;
-                        _timer = Math.Max(Balance.PeaceSeconds, Balance.MinWaveSeconds - _attackSeconds);
+                        _timer = Balance.PeaceSeconds;
                     }
                     else if (_attackSeconds >= Balance.MaxWaveSeconds)
                     {

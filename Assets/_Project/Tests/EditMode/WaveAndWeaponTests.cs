@@ -8,7 +8,7 @@ namespace AlienInvaders.Tests
         [Test]
         public void Portals_FollowFormula_AndAreCapped()
         {
-            int[] expected = { 1, 1, 2, 2, 3, 3, 4, 4, 4, 4 };
+            int[] expected = { 2, 2, 3, 3, 4, 4, 4, 4, 4, 4 };
             for (int n = 1; n <= expected.Length; n++)
             {
                 Assert.AreEqual(expected[n - 1], WaveGenerator.Build(n, 1).Portals, $"wave {n}");
@@ -18,11 +18,11 @@ namespace AlienInvaders.Tests
         [Test]
         public void Ships_GrowByTwo_AndOnlyAFewFlyAtOnce()
         {
-            int[] inAir = { 3, 4, 5, 6, 7, 8, 8, 8 };
+            int[] inAir = { 5, 6, 7, 8, 9, 10, 10, 10 };
             for (int n = 1; n <= inAir.Length; n++)
             {
                 WaveConfig wave = WaveGenerator.Build(n, 1);
-                Assert.AreEqual(4 + 2 * (n - 1), wave.TotalShips, $"ships in wave {n}");
+                Assert.AreEqual(6 + 2 * (n - 1), wave.TotalShips, $"ships in wave {n}");
                 Assert.AreEqual(inAir[n - 1], wave.MaxShipsInAir, $"ships in the air in wave {n}");
                 Assert.LessOrEqual(wave.MaxShipsInAir, wave.TotalShips);
             }
@@ -31,7 +31,7 @@ namespace AlienInvaders.Tests
         [Test]
         public void Ships_RaidTheCityLessAsWavesGo_ButAlwaysOnce()
         {
-            int[] runs = { 3, 3, 3, 2, 2, 2, 1, 1 };
+            int[] runs = { 3, 3, 3, 3, 2, 2, 2, 2, 1, 1 };
             for (int n = 1; n <= runs.Length; n++)
             {
                 Assert.AreEqual(runs[n - 1], WaveGenerator.Build(n, 1).CityRuns, $"city raids in wave {n}");
@@ -40,9 +40,9 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
-        public void TowerAttackers_GrowEveryTwoWaves_UpToFour()
+        public void TowerAttackers_GrowEveryThreeWaves_UpToFour()
         {
-            int[] attackers = { 1, 1, 2, 2, 3, 3, 4, 4, 4 };
+            int[] attackers = { 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4 };
             for (int n = 1; n <= attackers.Length; n++)
             {
                 Assert.AreEqual(attackers[n - 1], WaveGenerator.Build(n, 1).MaxTowerAttackers, $"tower attackers in wave {n}");
@@ -55,6 +55,23 @@ namespace AlienInvaders.Tests
             WaveConfig late = WaveGenerator.Build(50, 1);
             Assert.AreEqual(Balance.MinAimTime, late.AimTimeFighter, 0.001f);
             Assert.AreEqual(2f, late.SpeedMultiplier, 0.001f);
+            Assert.AreEqual(Balance.MaxFighterSpeedMultiplier, late.FighterSpeedMultiplier, 0.001f);
+        }
+
+        [Test]
+        public void Fighters_GetFasterEveryWave_MoreThanBombers()
+        {
+            float previous = 0f;
+            for (int n = 1; n <= 8; n++)
+            {
+                WaveConfig wave = WaveGenerator.Build(n, 1);
+                Assert.Greater(wave.FighterSpeedMultiplier, previous, $"wave {n}");
+                previous = wave.FighterSpeedMultiplier;
+            }
+            WaveConfig sixth = WaveGenerator.Build(6, 1);
+            Assert.Greater(sixth.FighterSpeedMultiplier, sixth.SpeedMultiplier);
+            var fighter = AlienInvaders.Core.Ships.ShipFactory.Create(ShipType.Fighter, System.Numerics.Vector3.Zero, sixth, new System.Random(1));
+            Assert.AreEqual(Balance.FighterSpeed * sixth.FighterSpeedMultiplier, fighter.Speed, 0.001f);
         }
 
         [Test]
@@ -125,20 +142,26 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
-        public void QuickWave_EarnsALongerRest_SlowWaveTheShortOne()
+        public void ClearedWave_RestsOnlyAFewSeconds()
         {
             var cycle = new WaveCycle(new WaveGenerator(1));
+            int attacks = 0;
+            cycle.OnAttackStarted += _ => attacks++;
             cycle.Tick(Balance.PeaceSeconds + 0.01f, 0);
             cycle.Tick(Balance.PortalOpeningSeconds + 0.01f, 0);
             cycle.Tick(10f, 3);
-            cycle.Tick(0f, 0); // cleared 10 s after the attack started
-            Assert.AreEqual(Balance.MinWaveSeconds - 10f, cycle.PhaseTimeLeft, 0.01f);
-
-            cycle.Tick(cycle.PhaseTimeLeft + 0.01f, 0);
-            cycle.Tick(Balance.PortalOpeningSeconds + 0.01f, 0);
-            cycle.Tick(Balance.MaxWaveSeconds - 1f, 3);
-            cycle.Tick(0f, 0); // cleared after a long fight
+            cycle.Tick(0f, 0); // cleared quickly: the rest is just as short
             Assert.AreEqual(Balance.PeaceSeconds, cycle.PhaseTimeLeft, 0.01f);
+
+            // From the empty sky to the next ships: a few seconds only.
+            float rest = 0f;
+            while (attacks < 2 && rest < 60f)
+            {
+                cycle.Tick(0.1f, 0);
+                rest += 0.1f;
+            }
+            Assert.AreEqual(2, attacks);
+            Assert.LessOrEqual(rest, 7f);
         }
 
         [Test]
@@ -214,6 +237,63 @@ namespace AlienInvaders.Tests
             var weapon = new WeaponHeat();
             Assert.IsTrue(weapon.TryFire());
             Assert.IsFalse(weapon.TryFire()); // no time passed
+        }
+    }
+
+    public class WeaponBoostTests
+    {
+        [Test]
+        public void PowerUps_ComeFromSomeBombers_InBigWaves_OrACrowdedSky()
+        {
+            var boost = new WeaponBoost();
+            for (int i = 0; i < 30; i++)
+            {
+                Assert.IsFalse(boost.RegisterKill(ShipType.Bomber, Balance.PowerUpFirstWave - 1, 2), "a small early wave gave a power up");
+                Assert.IsFalse(boost.RegisterKill(ShipType.Fighter, Balance.PowerUpFirstWave + 3, 9), "a fighter gave a power up");
+            }
+            int drops = 0;
+            for (int i = 0; i < 12; i++)
+            {
+                if (boost.RegisterKill(ShipType.Bomber, Balance.PowerUpFirstWave, 2))
+                {
+                    drops++;
+                }
+            }
+            // Not every bomber: one in every Balance.BombersPerPowerUp.
+            Assert.AreEqual(12 / Balance.BombersPerPowerUp, drops);
+            Assert.Less(drops, 12);
+            // A crowded sky helps even before that wave.
+            var crowded = new WeaponBoost();
+            int crowdedDrops = 0;
+            for (int i = 0; i < Balance.BombersPerPowerUp; i++)
+            {
+                if (crowded.RegisterKill(ShipType.Bomber, 1, Balance.PowerUpCrowd))
+                {
+                    crowdedDrops++;
+                }
+            }
+            Assert.AreEqual(1, crowdedDrops);
+        }
+
+        [Test]
+        public void Boost_HitsHarder_ForAFewSeconds()
+        {
+            var boost = new WeaponBoost();
+            int started = 0, ended = 0;
+            boost.OnStarted += () => started++;
+            boost.OnEnded += () => ended++;
+            Assert.AreEqual(Balance.ShotDamage, boost.ShotDamage);
+
+            boost.Collect();
+            Assert.AreEqual(Balance.ShotDamage * Balance.BoostDamageMultiplier, boost.ShotDamage);
+            boost.Tick(Balance.BoostSeconds - 1f);
+            boost.Collect(); // a second power up only makes it last longer
+            boost.Tick(Balance.BoostSeconds - 0.5f);
+            Assert.IsTrue(boost.Active);
+            boost.Tick(1f);
+            Assert.IsFalse(boost.Active);
+            Assert.AreEqual(Balance.ShotDamage, boost.ShotDamage);
+            Assert.AreEqual((1, 1), (started, ended));
         }
     }
 }

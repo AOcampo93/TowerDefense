@@ -49,6 +49,9 @@ namespace AlienInvaders.Core.Ships
         /// <summary>How fast the ship speeds up and slows down (m/s²).</summary>
         public float Acceleration { get; protected set; }
         public float DamageToTower { get; protected set; }
+
+        /// <summary>Shots (or bombs) the ship fires down at the city on each raid.</summary>
+        public int CityShotsPerRun { get; protected set; } = Balance.CityShotsPerRun;
         public float AimTime { get; protected set; }
         public ShipPhase Phase { get; private set; } = ShipPhase.Emerging;
 
@@ -134,7 +137,7 @@ namespace AlienInvaders.Core.Ships
                     if (Vector3.Distance(Position, Station) <= ArrivalDistance)
                     {
                         Phase = ShipPhase.Bombing;
-                        _cityShotsLeft = Balance.CityShotsPerRun;
+                        _cityShotsLeft = CityShotsPerRun;
                         _phaseTimer = FirstCityShotDelay;
                     }
                     break;

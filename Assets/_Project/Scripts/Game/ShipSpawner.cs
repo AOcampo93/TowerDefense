@@ -12,7 +12,8 @@ namespace AlienInvaders.Game
     /// <summary>
     /// Owns the ship pools and the list of ships in the air. It creates the core ship with the ShipFactory, gives it a
     /// pooled GameObject and turns ship events into game consequences: a shot damages the tower (and blows up its
-    /// facade), a destroyed ship counts for the score, a shot down at the city sets a roof on fire. Every ship in the
+    /// facade), a destroyed ship counts for the score (and some bombers leave a power up), a shot down at the city
+    /// sets a roof on fire and a bomber's bomb blows up a whole block with a boom the player feels. Every ship in the
     /// air is in one Airspace, so ships keep away from each other. Other systems (portals, radar) only ask it to
     /// spawn ships or read ActiveShips.
     /// </summary>
@@ -31,6 +32,10 @@ namespace AlienInvaders.Game
         [SerializeField] private ExplosionPool _hits;
         [SerializeField] private TowerDamageView _towerDamage;
         [SerializeField] private CityFires _cityFires;
+        [Tooltip("Boom and platform jolt of the bombs on the city.")]
+        [SerializeField] private BlastRumble _blasts;
+        [Tooltip("Glowing cubes left by some of the ships brought down (power ups).")]
+        [SerializeField] private PowerUpSpawner _powerUps;
         [SerializeField] private int _prewarmFighters = 40;
         [SerializeField] private int _prewarmBombers = 16;
 
@@ -91,10 +96,10 @@ namespace AlienInvaders.Game
             return controller;
         }
 
-        /// <summary>True when no ship is near a point in tower space, so a portal there can release the next ship.</summary>
+        /// <summary>True when the last ship has flown clear of a point in tower space, so a portal there can release the next.</summary>
         public bool IsClear(System.Numerics.Vector3 position)
         {
-            return _airspace.IsClear(position, Balance.ShipSeparation);
+            return _airspace.IsClear(position, Balance.PortalClearance);
         }
 
         /// <summary>Test helper: one wave 1 Fighter coming out of a random point of the sky.</summary>
@@ -126,19 +131,34 @@ namespace AlienInvaders.Game
             return _cityFires.TryPickTarget(shipPosition, out target);
         }
 
-        /// <summary>A ship's shot reached the city: the roof blows up and starts burning.</summary>
-        public void HandleCityShot(Vector3 target)
+        /// <summary>
+        /// A ship's shot reached the city: the roof blows up and starts burning. A bomb is a huge blast, and a moment
+        /// later its boom reaches the player and the platform jolts.
+        /// </summary>
+        public void HandleCityShot(Vector3 target, bool bomb)
         {
-            _cityFires.Ignite(target);
+            if (bomb)
+            {
+                _cityFires.Bomb(target);
+                _blasts.Play(target);
+            }
+            else
+            {
+                _cityFires.Ignite(target);
+            }
         }
 
         /// <summary>The weapon destroyed a ship: score it, blow it up and return it to its pool.</summary>
         public void HandleShipDestroyed(ShipController ship)
         {
             ShipType type = ship.Ship.Type;
+            Vector3 position = ship.transform.position;
             _game.Score.RegisterKill(type);
-            _explosions.Spawn(ship.transform.position,
-                type == ShipType.Bomber ? _bomberExplosionSize : _fighterExplosionSize);
+            _explosions.Spawn(position, type == ShipType.Bomber ? _bomberExplosionSize : _fighterExplosionSize);
+            if (_game.Boost.RegisterKill(type, _game.Waves.CurrentWave, _active.Count - 1))
+            {
+                _powerUps.Spawn(position);
+            }
             Remove(ship);
         }
 

@@ -25,6 +25,8 @@ namespace AlienInvaders.Views
         [SerializeField] private float _fireWidth = 0.35f;
         [Tooltip("Width of the beam fired down at the city: raids are far from the tower, so it is thicker to be seen.")]
         [SerializeField] private float _cityFireWidth = 1.2f;
+        [Tooltip("Width of a bomber's bomb beam: a heavy column of fire down to the city.")]
+        [SerializeField] private float _bombWidth = 3.5f;
         [SerializeField] private float _fireSeconds = 0.2f;
 
         [Header("Health bar")]
@@ -126,11 +128,14 @@ namespace AlienInvaders.Views
             _voice.Play();
         }
 
-        /// <summary>The ship fires (at the tower, or down at the city during a raid): a short heavy beam.</summary>
-        public void ShowFire(Vector3 target, bool atCity = false)
+        /// <summary>
+        /// The ship fires (at the tower, or down at the city during a raid): a short heavy beam, the heaviest of all
+        /// for a bomber's bomb.
+        /// </summary>
+        public void ShowFire(Vector3 target, bool atCity = false, bool bomb = false)
         {
             _fireTarget = target;
-            _shotWidth = atCity ? _cityFireWidth : _fireWidth;
+            _shotWidth = bomb ? _bombWidth : atCity ? _cityFireWidth : _fireWidth;
             _aimLaser.enabled = false;
             _fireLaser.enabled = true;
             _fireTimer = _fireSeconds;

@@ -87,6 +87,15 @@ namespace AlienInvaders.Core.Motion
                 time: _time);
         }
 
+        /// <summary>
+        /// A blast near the tower that does not hurt it (a bomb on the city): the platform jolts for a moment. The
+        /// strength (0 to 1) only raises the shake, so a jolt never cuts short a stronger one in progress.
+        /// </summary>
+        public void Jolt(float strength)
+        {
+            _impactShake = Math.Max(_impactShake, Math.Min(1f, strength));
+        }
+
         private void HandleDamaged(TowerSide side, float amount)
         {
             _impactShake = Math.Max(_impactShake, ImpactShake);
