@@ -393,5 +393,20 @@ namespace AlienInvaders.Tests
             StringAssert.Contains("\"pitch\":1.5", json);
             StringAssert.Contains("\"roll\":-2.25", json);
         }
+
+        [Test]
+        public void Recorder_Snapshot_StaysWhenTheNextMatchStarts()
+        {
+            var recorder = new MotionRecorder();
+            recorder.Apply(new MotionSample(1f, 2f, 0f, 0f, 0f));
+            recorder.Apply(new MotionSample(3f, 4f, 0f, 0f, 1f));
+            MotionRecorder snapshot = recorder.Snapshot();
+            // The game clears the recorder for a new match while the snapshot is still being written to disk.
+            recorder.Clear();
+            recorder.Apply(new MotionSample(9f, 9f, 0f, 0f, 2f));
+            Assert.AreEqual(2, snapshot.Samples.Count);
+            StringAssert.Contains("\"pitch\":3", snapshot.ToJson());
+            StringAssert.DoesNotContain("\"pitch\":9", snapshot.ToJson());
+        }
     }
 }

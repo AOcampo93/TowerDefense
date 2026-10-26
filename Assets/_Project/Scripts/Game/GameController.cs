@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Threading.Tasks;
 using AlienInvaders.Core;
 using AlienInvaders.Core.Motion;
 using AlienInvaders.Core.Records;
@@ -339,15 +340,22 @@ namespace AlienInvaders.Game
                 return;
             }
             string path = Path.Combine(Application.persistentDataPath, $"motion_{DateTime.Now:yyyyMMdd_HHmmss}.json");
-            try
+            // Writing ten thousand samples took half a second on the Quest, right at the landing: the headset kept
+            // showing the darkened frame of the landing dip over the room. The text is built and written on a
+            // worker thread from a copy, so the game keeps drawing.
+            MotionRecorder track = Recorder.Snapshot();
+            Task.Run(() =>
             {
-                Recorder.Save(path);
-                Debug.Log($"[Game] Motion track saved: {path} ({Recorder.Samples.Count} samples)");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[Game] Could not save the motion track: {e.Message}");
-            }
+                try
+                {
+                    track.Save(path);
+                    Debug.Log($"[Game] Motion track saved: {path} ({track.Samples.Count} samples)");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[Game] Could not save the motion track: {e.Message}");
+                }
+            });
         }
 
         private IEnumerator ArrivalRoutine()

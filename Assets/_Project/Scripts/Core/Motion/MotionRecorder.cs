@@ -33,6 +33,17 @@ namespace AlienInvaders.Core.Motion
         }
 
         /// <summary>
+        /// A copy of the samples recorded so far. The game saves the copy on a worker thread, so writing a whole
+        /// match never freezes the headset, and the next match can start recording into this one meanwhile.
+        /// </summary>
+        public MotionRecorder Snapshot()
+        {
+            var copy = new MotionRecorder();
+            copy._samples.AddRange(_samples);
+            return copy;
+        }
+
+        /// <summary>
         /// Builds the JSON text by hand with InvariantCulture, so decimals always use a dot
         /// no matter the language of the device (Portuguese/Spanish devices use a comma).
         /// </summary>
