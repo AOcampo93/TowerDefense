@@ -1,22 +1,27 @@
-// The player's body in the style of the Quest system hands: light grey and see-through, with a brighter white
-// outline. Drawn after SilhouetteDepth has written the body's depth, so only the front surface is colored and the
-// overlapping capsules never stack into darker spots.
+// The player's body as a faint glow: almost invisible inside, with a thin luminous blue edge where the surface
+// turns away from the eyes, so the outline of the body shows without hiding the world. The edge adds light
+// (premultiplied blending), like a hologram. Drawn after SilhouetteDepth has written the body's depth, so only the
+// front surface is colored and the overlapping capsules never stack into brighter spots. Whatever is very close to
+// the eyes (chest, shoulders, upper arms seen from above) fades out, so the body never blocks the view.
 Shader "AlienInvaders/SilhouetteTranslucent"
 {
     Properties
     {
-        _BaseColor ("Body Color", Color) = (0.82, 0.86, 0.9, 1)
-        _BodyAlpha ("Body Opacity", Range(0, 1)) = 0.22
-        _RimColor ("Outline Color", Color) = (1, 1, 1, 1)
-        _RimAlpha ("Outline Opacity", Range(0, 1)) = 0.85
-        _RimPower ("Outline Sharpness", Range(0.5, 8)) = 2.2
+        _BaseColor ("Body Tint", Color) = (0.2, 0.55, 1, 1)
+        _BodyAlpha ("Body Opacity", Range(0, 1)) = 0.04
+        _RimColor ("Edge Color", Color) = (0.3, 0.75, 1, 1)
+        _RimIntensity ("Edge Glow", Range(0, 3)) = 1.1
+        _RimAlpha ("Edge Opacity", Range(0, 1)) = 0.3
+        _RimPower ("Edge Thinness", Range(0.5, 8)) = 4
+        _FadeNear ("Fade Start (m from the eyes)", Float) = 0.3
+        _FadeFar ("Fully Visible (m from the eyes)", Float) = 0.5
     }
 
     SubShader
     {
         // After the depth pass (queue 3005) and after other transparent objects.
         Tags { "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" "Queue" = "Transparent+10" }
-        Blend SrcAlpha OneMinusSrcAlpha, One OneMinusSrcAlpha
+        Blend One OneMinusSrcAlpha
         ZWrite Off
         ZTest LEqual
 
@@ -35,6 +40,9 @@ Shader "AlienInvaders/SilhouetteTranslucent"
                 half4 _BaseColor;
                 half _BodyAlpha;
                 half4 _RimColor;
+                half _RimIntensity;
+                float _FadeNear;
+                float _FadeFar;
                 half _RimAlpha;
                 half _RimPower;
             CBUFFER_END
@@ -72,7 +80,10 @@ Shader "AlienInvaders/SilhouetteTranslucent"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 half facing = saturate(dot(normalize(input.normalWS), normalize(input.viewDirWS)));
                 half rim = pow(1.0h - facing, _RimPower);
-                return half4(lerp(_BaseColor.rgb, _RimColor.rgb, rim), lerp(_BodyAlpha, _RimAlpha, rim));
+                // Premultiplied: the faint tint and the edge glow add light, and only the edge dims the world behind.
+                half3 color = _BaseColor.rgb * _BodyAlpha + _RimColor.rgb * (rim * _RimIntensity);
+                half fade = smoothstep(_FadeNear, _FadeFar, length(input.viewDirWS));
+                return half4(color, saturate(_BodyAlpha + rim * _RimAlpha)) * fade;
             }
             ENDHLSL
         }

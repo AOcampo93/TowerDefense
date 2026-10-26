@@ -5,26 +5,41 @@ using UnityEngine;
 namespace AlienInvaders.Views
 {
     /// <summary>
-    /// The player's own body in VR, as a see-through light silhouette with a white outline, like the Quest system hands. The Quest 3 cameras track the upper
-    /// body and the system estimates the legs (OVRBody, full body joint set); this view draws a capsule between pairs
-    /// of joints: torso, arms, every finger and the legs. So the blaster is held by a hand and the radar sits on a
-    /// wrist instead of floating in the air. In AR the real body is visible, so the silhouette only shows in VR.
+    /// The player's own body in VR, as a faint glow with a thin luminous blue edge (SilhouetteTranslucent shader). The
+    /// Quest 3 cameras track the upper body and the system estimates the legs (OVRBody, full body joint set); this view
+    /// draws a capsule between pairs of joints: torso, arms, every finger and the legs. The torso and the
+    /// palms are flat capsules turned with the line of the shoulders, hips or knuckles, wider than deep like a real
+    /// body, so the outline reads as a person instead of a row of tubes. So the blaster is held by a hand and the radar
+    /// sits on a wrist instead of floating in the air. In AR the real body is visible, so the silhouette only shows in VR.
     /// If body tracking is unavailable (not allowed, or no data), nothing is drawn.
     /// </summary>
     public class BodySilhouetteView : MonoBehaviour
     {
-        // One capsule between two joints, with its radius in meters.
+        // One capsule between two joints. A round piece has one radius; a flat piece is Radius wide (half width) and
+        // Depth thick (half thickness), with its width along the line between two other joints (SideFrom to SideTo).
         private struct Segment
         {
             public OVRSkeleton.BoneId From;
             public OVRSkeleton.BoneId To;
             public float Radius;
+            public float Depth;
+            public OVRSkeleton.BoneId SideFrom;
+            public OVRSkeleton.BoneId SideTo;
 
             public Segment(OVRSkeleton.BoneId from, OVRSkeleton.BoneId to, float radius)
+                : this(from, to, radius, radius, OVRSkeleton.BoneId.Invalid, OVRSkeleton.BoneId.Invalid)
+            {
+            }
+
+            public Segment(OVRSkeleton.BoneId from, OVRSkeleton.BoneId to, float radius, float depth,
+                OVRSkeleton.BoneId sideFrom, OVRSkeleton.BoneId sideTo)
             {
                 From = from;
                 To = to;
                 Radius = radius;
+                Depth = depth;
+                SideFrom = sideFrom;
+                SideTo = sideTo;
             }
         }
 
@@ -44,6 +59,8 @@ namespace AlienInvaders.Views
         private readonly List<Transform> _pieces = new List<Transform>();
         private Transform[] _from;
         private Transform[] _to;
+        private Transform[] _sideFrom;
+        private Transform[] _sideTo;
         private Transform _root;
         private bool _bound;
 
@@ -117,7 +134,10 @@ namespace AlienInvaders.Views
                 {
                     continue;
                 }
-                PlaceCapsule(piece, a, b, radius);
+                Vector3 side = _sideFrom[i] != null && _sideTo[i] != null
+                    ? _sideTo[i].position - _sideFrom[i].position
+                    : Vector3.zero;
+                PlaceCapsule(piece, a, b, radius, Layout[i].Depth, side);
             }
         }
 
@@ -138,10 +158,14 @@ namespace AlienInvaders.Views
 
             _from = new Transform[Layout.Length];
             _to = new Transform[Layout.Length];
+            _sideFrom = new Transform[Layout.Length];
+            _sideTo = new Transform[Layout.Length];
             for (int i = 0; i < Layout.Length; i++)
             {
                 byId.TryGetValue(Layout[i].From, out _from[i]);
                 byId.TryGetValue(Layout[i].To, out _to[i]);
+                byId.TryGetValue(Layout[i].SideFrom, out _sideFrom[i]);
+                byId.TryGetValue(Layout[i].SideTo, out _sideTo[i]);
                 if (i >= _pieces.Count)
                 {
                     _pieces.Add(CreatePiece(i));
@@ -164,14 +188,19 @@ namespace AlienInvaders.Views
         }
 
         // Unity's capsule is 2 units tall and 1 wide along Y: stretch it from joint a to joint b, rounding past both
-        // ends by the radius so neighboring pieces overlap at the joints.
-        private static void PlaceCapsule(Transform piece, Vector3 a, Vector3 b, float radius)
+        // ends by the radius so neighboring pieces overlap at the joints. A flat piece turns its width (local X)
+        // along the side direction and its thickness (local Z) to the front.
+        private static void PlaceCapsule(Transform piece, Vector3 a, Vector3 b, float radius, float depth, Vector3 side)
         {
             Vector3 direction = b - a;
             float length = direction.magnitude;
+            Vector3 up = length > 0.0001f ? direction / length : Vector3.up;
+            Vector3 width = Vector3.ProjectOnPlane(side, up);
             piece.position = (a + b) * 0.5f;
-            piece.rotation = length > 0.0001f ? Quaternion.FromToRotation(Vector3.up, direction / length) : Quaternion.identity;
-            piece.localScale = new Vector3(radius * 2f, (length + radius * 2f) * 0.5f, radius * 2f);
+            piece.rotation = width.sqrMagnitude > 0.000001f
+                ? Quaternion.LookRotation(Vector3.Cross(width.normalized, up), up)
+                : Quaternion.FromToRotation(Vector3.up, up);
+            piece.localScale = new Vector3(radius * 2f, (length + radius * 2f) * 0.5f, depth * 2f);
         }
 
         // The body as a list of joint pairs. Head and neck are left out: the camera sits inside them.
@@ -179,11 +208,15 @@ namespace AlienInvaders.Views
         {
             var layout = new List<Segment>
             {
-                // Torso
-                new Segment(OVRSkeleton.BoneId.FullBody_Hips, OVRSkeleton.BoneId.FullBody_SpineLower, 0.12f),
-                new Segment(OVRSkeleton.BoneId.FullBody_SpineLower, OVRSkeleton.BoneId.FullBody_SpineMiddle, 0.12f),
-                new Segment(OVRSkeleton.BoneId.FullBody_SpineMiddle, OVRSkeleton.BoneId.FullBody_SpineUpper, 0.13f),
-                new Segment(OVRSkeleton.BoneId.FullBody_SpineUpper, OVRSkeleton.BoneId.FullBody_Chest, 0.13f),
+                // Torso: flat, as wide as the hips below and the shoulders above
+                new Segment(OVRSkeleton.BoneId.FullBody_Hips, OVRSkeleton.BoneId.FullBody_SpineLower, 0.15f, 0.1f,
+                    OVRSkeleton.BoneId.FullBody_LeftUpperLeg, OVRSkeleton.BoneId.FullBody_RightUpperLeg),
+                new Segment(OVRSkeleton.BoneId.FullBody_SpineLower, OVRSkeleton.BoneId.FullBody_SpineMiddle, 0.14f, 0.095f,
+                    OVRSkeleton.BoneId.FullBody_LeftUpperLeg, OVRSkeleton.BoneId.FullBody_RightUpperLeg),
+                new Segment(OVRSkeleton.BoneId.FullBody_SpineMiddle, OVRSkeleton.BoneId.FullBody_SpineUpper, 0.15f, 0.1f,
+                    OVRSkeleton.BoneId.FullBody_LeftArmUpper, OVRSkeleton.BoneId.FullBody_RightArmUpper),
+                new Segment(OVRSkeleton.BoneId.FullBody_SpineUpper, OVRSkeleton.BoneId.FullBody_Chest, 0.16f, 0.1f,
+                    OVRSkeleton.BoneId.FullBody_LeftArmUpper, OVRSkeleton.BoneId.FullBody_RightArmUpper),
 
                 // Arms from the shoulder joint (the collarbones would hang right under the chin)
                 new Segment(OVRSkeleton.BoneId.FullBody_LeftArmUpper, OVRSkeleton.BoneId.FullBody_LeftArmLower, 0.045f),
@@ -213,8 +246,10 @@ namespace AlienInvaders.Views
             int shift = left ? 0 : OVRSkeleton.BoneId.FullBody_RightHandWrist - OVRSkeleton.BoneId.FullBody_LeftHandWrist;
             OVRSkeleton.BoneId Id(OVRSkeleton.BoneId leftId) => leftId + shift;
 
-            layout.Add(new Segment(Id(OVRSkeleton.BoneId.FullBody_LeftHandWrist), Id(OVRSkeleton.BoneId.FullBody_LeftHandMiddleProximal), 0.03f));
-            layout.Add(new Segment(Id(OVRSkeleton.BoneId.FullBody_LeftHandIndexProximal), Id(OVRSkeleton.BoneId.FullBody_LeftHandLittleProximal), 0.022f));
+            // A flat palm, as wide as the knuckles, and a thin bar across the knuckles.
+            layout.Add(new Segment(Id(OVRSkeleton.BoneId.FullBody_LeftHandWrist), Id(OVRSkeleton.BoneId.FullBody_LeftHandMiddleProximal), 0.035f, 0.014f,
+                Id(OVRSkeleton.BoneId.FullBody_LeftHandIndexProximal), Id(OVRSkeleton.BoneId.FullBody_LeftHandLittleProximal)));
+            layout.Add(new Segment(Id(OVRSkeleton.BoneId.FullBody_LeftHandIndexProximal), Id(OVRSkeleton.BoneId.FullBody_LeftHandLittleProximal), 0.014f));
 
             OVRSkeleton.BoneId[] fingerStarts =
             {
