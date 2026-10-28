@@ -13,8 +13,10 @@ namespace AlienInvaders.Views
     /// End of match screen in the real room (AR): a "TOWER DOWN" scoreboard (a 3D model) floating 1.5 m in front of
     /// the player. Its screen shows "Your run" on the left (time, ships, accuracy, wave, score and a shareable record
     /// code) and the local Top 10 on the right, one row per record on alternating stripes, with this match's row in
-    /// gold. A new record first asks for initials under the score; then the "Play again" button takes their place.
-    /// It only shows what the GameController gives it; saving records is not its job.
+    /// gold. A new record first asks for initials under the score; then the "Play again" button takes their place,
+    /// with an "i" button beside it that turns the screen into an About page (the game, how it is built and who made
+    /// it) until the player presses "Back". It only shows what the GameController gives it; saving records is not its
+    /// job.
     /// </summary>
     public class ResultsView : MonoBehaviour
     {
@@ -32,6 +34,12 @@ namespace AlienInvaders.Views
         [SerializeField] private Image[] _rowBacks;
         [SerializeField] private InitialsPicker _picker;
         [SerializeField] private ARButton _playAgain;
+        [Tooltip("Everything of this match's results; hidden while the About page is open.")]
+        [SerializeField] private GameObject _resultsPage;
+        [Tooltip("About page: the game, its architecture and its creator.")]
+        [SerializeField] private GameObject _aboutPage;
+        [SerializeField] private ARButton _aboutButton;
+        [SerializeField] private ARButton _backButton;
         [SerializeField] private Color _highlightColor = new Color(1f, 0.85f, 0.2f);
         [SerializeField] private Color _rowColor = Color.white;
         [SerializeField] private Color _stripeColor = new Color(0.35f, 0.42f, 0.5f, 0.18f);
@@ -48,12 +56,16 @@ namespace AlienInvaders.Views
         {
             _panel.SetActive(false);
             _playAgain.OnPressed += HandlePlayAgainPressed;
+            _aboutButton.OnPressed += HandleAboutPressed;
+            _backButton.OnPressed += HandleBackPressed;
             _picker.OnConfirmed += HandleInitialsConfirmed;
         }
 
         private void OnDestroy()
         {
             _playAgain.OnPressed -= HandlePlayAgainPressed;
+            _aboutButton.OnPressed -= HandleAboutPressed;
+            _backButton.OnPressed -= HandleBackPressed;
             _picker.OnConfirmed -= HandleInitialsConfirmed;
         }
 
@@ -71,6 +83,7 @@ namespace AlienInvaders.Views
             _codeText.text = "RECORD CODE: " + GroupedCode(PackedRecordCode.FromResult(result));
             _picker.Hide();
             ShowTable(table, highlightIndex);
+            ShowAbout(false);
             _panel.SetActive(true);
         }
 
@@ -106,10 +119,18 @@ namespace AlienInvaders.Views
             _picker.Begin(suggestion);
         }
 
-        /// <summary>Shows or hides the "Play again" button.</summary>
+        /// <summary>Shows or hides the "Play again" button and the "i" button beside it.</summary>
         public void SetPlayAgainVisible(bool visible)
         {
             _playAgain.gameObject.SetActive(visible);
+            _aboutButton.gameObject.SetActive(visible);
+        }
+
+        /// <summary>Turns the screen into the About page, or back into this match's results.</summary>
+        public void ShowAbout(bool about)
+        {
+            _resultsPage.SetActive(!about);
+            _aboutPage.SetActive(about);
         }
 
         /// <summary>Removes the panel.</summary>
@@ -135,6 +156,16 @@ namespace AlienInvaders.Views
         private void HandlePlayAgainPressed()
         {
             OnPlayAgain?.Invoke();
+        }
+
+        private void HandleAboutPressed()
+        {
+            ShowAbout(true);
+        }
+
+        private void HandleBackPressed()
+        {
+            ShowAbout(false);
         }
 
         // In front of the player at the moment the panel appears; it stays there, like an object in the room.
