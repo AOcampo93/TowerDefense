@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Store build: the final manifest keeps only what the game uses (internet for the play stats and feedback, body
+     tracking, passthrough). Libraries and the engine add a microphone, Bluetooth, hand tracking, anchors and scene
+     that the game never uses; they are removed here, and the game is listed for Quest 3 and Quest 3S only. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" android:installLocation="auto">
+  <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />
+  <uses-permission android:name="android.permission.BLUETOOTH" tools:node="remove" />
+  <uses-permission android:name="com.oculus.permission.HAND_TRACKING" tools:node="remove" />
+  <uses-permission android:name="com.oculus.permission.USE_ANCHOR_API" tools:node="remove" />
+  <uses-permission android:name="com.oculus.permission.USE_SCENE" tools:node="remove" />
+  <uses-feature android:name="android.hardware.microphone" tools:node="remove" />
+  <uses-feature android:name="oculus.software.handtracking" tools:node="remove" />
+  <supports-screens android:smallScreens="true" android:normalScreens="true" android:largeScreens="true" android:xlargeScreens="true" android:anyDensity="true" />
+  <application android:icon="@mipmap/app_icon" android:label="@string/app_name">
+    <meta-data android:name="com.oculus.supportedDevices" android:value="quest3|quest3s" tools:replace="android:value" />
+  </application>
+</manifest>
