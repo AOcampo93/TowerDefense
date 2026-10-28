@@ -28,11 +28,11 @@ namespace AlienInvaders.Tests
         }
 
         [Test]
-        public void Payload_EventHasTypeTimeSessionAndData()
+        public void Payload_EventHasIdTypeTimeSessionAndData()
         {
-            string json = TelemetryPayload.Event("match_end", "s1", new DateTime(2026, 10, 28, 14, 5, 9, 250, DateTimeKind.Utc),
+            string json = TelemetryPayload.Event("e1", "match_end", "s1", new DateTime(2026, 10, 28, 14, 5, 9, 250, DateTimeKind.Utc),
                 new JsonFields().With("seconds", 371));
-            Assert.AreEqual("{\"type\":\"match_end\",\"at\":\"2026-10-28T14:05:09.250Z\",\"session\":\"s1\",\"data\":{\"seconds\":371}}", json);
+            Assert.AreEqual("{\"id\":\"e1\",\"type\":\"match_end\",\"at\":\"2026-10-28T14:05:09.250Z\",\"session\":\"s1\",\"data\":{\"seconds\":371}}", json);
         }
 
         [Test]

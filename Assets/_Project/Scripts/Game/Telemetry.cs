@@ -199,7 +199,7 @@ namespace AlienInvaders.Game
         {
             if (Active)
             {
-                _events.Add(TelemetryPayload.Event(type, _session, DateTime.UtcNow, data));
+                _events.Add(TelemetryPayload.Event(Guid.NewGuid().ToString("N"), type, _session, DateTime.UtcNow, data));
             }
         }
 

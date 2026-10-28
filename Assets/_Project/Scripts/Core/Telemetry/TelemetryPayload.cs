@@ -11,11 +11,16 @@ namespace AlienInvaders.Core.Telemetry
     /// </summary>
     public static class TelemetryPayload
     {
-        /// <summary>One event line: what happened, when (UTC), in which session, and its values.</summary>
-        public static string Event(string type, string session, DateTime utcTime, JsonFields data)
+        /// <summary>
+        /// One event line: a unique id, what happened, when (UTC), in which session, and its values. The id lets the
+        /// server keep a batch only once when the headset sends it again (a batch sent just before the headset sleeps
+        /// can be stored without the game hearing back, and then it is retried).
+        /// </summary>
+        public static string Event(string id, string type, string session, DateTime utcTime, JsonFields data)
         {
             return new StringBuilder("{")
-                .Append("\"type\":").Append(JsonFields.Quote(type))
+                .Append("\"id\":").Append(JsonFields.Quote(id ?? string.Empty))
+                .Append(",\"type\":").Append(JsonFields.Quote(type))
                 .Append(",\"at\":").Append(JsonFields.Quote(utcTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture)))
                 .Append(",\"session\":").Append(JsonFields.Quote(session ?? string.Empty))
                 .Append(",\"data\":").Append((data ?? new JsonFields()).ToJson())
