@@ -68,6 +68,7 @@ How to run:
 # Future Work
 
 * Platform calibration and the AR to VR transition inside the closed elevator
+* Start screen on the scoreboard with the instructions: the controller held at the chest sets the platform center, then how to shoot, the wrist radar, the tower health bar on the floor and the green power up cubes
 * Energy weapon with overheating, haptics and a cyan laser
 * Enemy ships (Fighter and Bomber) with object pooling and aiming lasers
 * Tower tilt, staged drops and shake driven by the motion bus

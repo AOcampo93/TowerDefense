@@ -4,9 +4,10 @@ using UnityEngine;
 namespace AlienInvaders.Game
 {
     /// <summary>
-    /// Lines up the virtual platform with the real one. The player holds the right controller over the
-    /// center of their physical platform and presses the trigger: the game origin (GameRoot) moves there
-    /// and turns to face where the player is looking. The result is saved so "Play again" can skip this step.
+    /// Lines up the virtual platform with the player. The start screen asks them to hold the right controller
+    /// against their chest (or over the center of a real platform) and pull the trigger: the game origin
+    /// (GameRoot) moves there, so they stand in the middle of the platform, and turns to face where they are
+    /// looking. The result is saved, so the next session starts from the same spot until it is confirmed again.
     /// </summary>
     public class PlatformCalibration : MonoBehaviour
     {
