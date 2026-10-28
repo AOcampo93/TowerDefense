@@ -12,7 +12,9 @@ namespace AlienInvaders.Views
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
-        [Tooltip("Inside-out sphere around the eyes with a transparent black material.")]
+        [Tooltip("Sphere around the eyes with the ScreenFade material (black, drawn over everything). It must be wider " +
+                 "than the camera's near plane at the edges of the view (radius 0.5 m), or the near plane cuts a hole " +
+                 "in it and the darkness shows as a dark ball in the middle of the view.")]
         [SerializeField] private Renderer _shell;
 
         private MaterialPropertyBlock _block;

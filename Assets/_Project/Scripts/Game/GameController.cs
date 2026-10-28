@@ -341,8 +341,9 @@ namespace AlienInvaders.Game
             }
             string path = Path.Combine(Application.persistentDataPath, $"motion_{DateTime.Now:yyyyMMdd_HHmmss}.json");
             // Writing ten thousand samples took half a second on the Quest, right at the landing: the headset kept
-            // showing the darkened frame of the landing dip over the room. The text is built and written on a
-            // worker thread from a copy, so the game keeps drawing.
+            // showing the darkened frame of the landing dip over the room. The text is written on a worker thread
+            // from a copy, straight into the file (no big string left for the garbage collector), so the game keeps
+            // drawing.
             MotionRecorder track = Recorder.Snapshot();
             Task.Run(() =>
             {

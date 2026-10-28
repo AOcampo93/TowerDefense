@@ -31,9 +31,9 @@ namespace AlienInvaders.Views
 
         private void LateUpdate()
         {
-            Vector3 wrist;
-            Vector3 towardElbow;
-            Vector3 backOfHand;
+            Vector3 wrist = Vector3.zero;
+            Vector3 towardElbow = Vector3.zero;
+            Vector3 backOfHand = Vector3.zero;
             if (_skeleton.IsInitialized && _skeleton.IsDataValid && FindBones())
             {
                 wrist = _wristBone.position;
@@ -41,7 +41,9 @@ namespace AlienInvaders.Views
                 // For a left hand, little x index (both measured from the wrist) points out of the back of the hand.
                 backOfHand = Vector3.Cross(_littleBone.position - wrist, _indexBone.position - wrist).normalized;
             }
-            else
+            // Right after the headset is put back on, the tracked joints can sit on one point for a few frames and
+            // give no direction (normalized zero vectors): the watch follows the controller meanwhile.
+            if (towardElbow.sqrMagnitude < 0.5f || backOfHand.sqrMagnitude < 0.5f)
             {
                 wrist = _controller.TransformPoint(_controllerWrist);
                 towardElbow = -_controller.forward;

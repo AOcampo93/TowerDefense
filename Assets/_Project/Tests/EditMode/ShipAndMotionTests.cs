@@ -408,5 +408,25 @@ namespace AlienInvaders.Tests
             StringAssert.Contains("\"pitch\":3", snapshot.ToJson());
             StringAssert.DoesNotContain("\"pitch\":9", snapshot.ToJson());
         }
+
+        [Test]
+        public void Recorder_Save_WritesTheSameJsonToTheFile()
+        {
+            var recorder = new MotionRecorder();
+            recorder.Apply(new MotionSample(1.5f, -2.25f, -1f, 0.5f, 0.05f));
+            recorder.Apply(new MotionSample(0.1234f, 0f, -12.5f, 1f, 1000.07f));
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ai_motion_" + Guid.NewGuid().ToString("N") + ".json");
+            try
+            {
+                recorder.Save(path);
+                Assert.AreEqual(recorder.ToJson(), System.IO.File.ReadAllText(path));
+                StringAssert.Contains("{\"t\":0.05,\"pitch\":1.5,\"roll\":-2.25,\"heave\":-1,\"shake\":0.5}", recorder.ToJson());
+                StringAssert.Contains("{\"t\":1000.07,\"pitch\":0.123,\"roll\":0,\"heave\":-12.5,\"shake\":1}", recorder.ToJson());
+            }
+            finally
+            {
+                System.IO.File.Delete(path);
+            }
+        }
     }
 }
