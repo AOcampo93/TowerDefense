@@ -41,6 +41,12 @@ namespace AlienInvaders.Game
         /// <summary>Raised after every state change so views can show or hide themselves.</summary>
         public event Action<GameState> OnStateChanged;
 
+        /// <summary>Raised when a match enters the Top 10, with its place (0 = first) once the initials are confirmed.</summary>
+        public event Action<int, MatchResult> OnRecordSaved;
+
+        /// <summary>The last match that ended (set when the Results state begins).</summary>
+        public MatchResult LastResult => _lastResult;
+
         // Core systems (pure C#). Created here so every MonoBehaviour shares the same instances.
         public TowerIntegrity Tower { get; private set; }
         public TowerMotionModel TowerMotion { get; private set; }
@@ -250,6 +256,7 @@ namespace AlienInvaders.Game
             PlayerPrefs.SetString(LastInitialsKey, initials);
             PlayerPrefs.Save();
             Debug.Log($"[Game] Record saved: {initials} in place {place + 1}");
+            OnRecordSaved?.Invoke(place, _lastResult);
 
             _results.ShowTable(Records.Entries, place);
             _results.SetPlayAgainVisible(true);

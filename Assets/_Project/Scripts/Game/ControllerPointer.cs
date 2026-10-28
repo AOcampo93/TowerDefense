@@ -5,9 +5,9 @@ using UnityEngine;
 namespace AlienInvaders.Game
 {
     /// <summary>
-    /// Laser pointer of the right controller for the AR panels ("Play again"). It is only on in the Results state,
-    /// when the weapon is gone. A physics raycast against the UI layer finds ARButtons: point to highlight, pull the
-    /// trigger to press.
+    /// Laser pointer of the right controller for the AR panels: the "i" button of the start screen, and "Play again"
+    /// and the feedback form at the end. It is only on in the Calibration and Results states, when the weapon is gone.
+    /// A physics raycast against the UI layer finds ARButtons: point to highlight, pull the trigger to press.
     /// </summary>
     public class ControllerPointer : MonoBehaviour
     {
@@ -19,9 +19,12 @@ namespace AlienInvaders.Game
 
         private ARButton _hovered;
 
+        /// <summary>True while the laser points at a button (the trigger then presses it and does nothing else).</summary>
+        public bool IsOverButton => _hovered != null;
+
         private void Update()
         {
-            if (_game.State != GameState.Results)
+            if (_game.State != GameState.Results && _game.State != GameState.Calibration)
             {
                 if (_ray.enabled)
                 {

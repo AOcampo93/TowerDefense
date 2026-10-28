@@ -78,7 +78,8 @@ How to run:
 * Wrist radar and spatial audio
 * Critical state, emergency rescue elevator and results panels
 * Local Top 10 with arcade style initials and a shareable record code
-* About page on the results board: the match flow and the architecture as diagrams, credits and the creator
+* About page behind an i button on the start screen: the match flow and the architecture as diagrams, credits and the creator
+* Feedback form on the results board (stars, topics to improve and a message typed on the headset keyboard) and anonymous play stats, both sent to our own API
 * Final art, skybox, effects and sound
 * Performance pass to stay at 72 FPS or more on Quest 3
 * Optional comfort mode with reduced tilt

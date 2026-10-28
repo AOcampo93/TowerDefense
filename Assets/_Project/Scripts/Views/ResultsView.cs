@@ -14,9 +14,8 @@ namespace AlienInvaders.Views
     /// the player. Its screen shows "Your run" on the left (time, ships, accuracy, wave, score and a shareable record
     /// code) and the local Top 10 on the right, one row per record on alternating stripes, with this match's row in
     /// gold. A new record first asks for initials under the score; then the "Play again" button takes their place,
-    /// with an "i" button beside it that turns the screen into an About page (the game, how it is built and who made
-    /// it) until the player presses "Back". It only shows what the GameController gives it; saving records is not its
-    /// job.
+    /// with a round feedback button beside it that turns the screen into the feedback form (FeedbackView) until the
+    /// form is sent or closed. It only shows what the GameController gives it; saving records is not its job.
     /// </summary>
     public class ResultsView : MonoBehaviour
     {
@@ -34,12 +33,10 @@ namespace AlienInvaders.Views
         [SerializeField] private Image[] _rowBacks;
         [SerializeField] private InitialsPicker _picker;
         [SerializeField] private ARButton _playAgain;
-        [Tooltip("Everything of this match's results; hidden while the About page is open.")]
+        [Tooltip("Everything of this match's results; hidden while the feedback form is open.")]
         [SerializeField] private GameObject _resultsPage;
-        [Tooltip("About page: the game, its architecture and its creator.")]
-        [SerializeField] private GameObject _aboutPage;
-        [SerializeField] private ARButton _aboutButton;
-        [SerializeField] private ARButton _backButton;
+        [SerializeField] private FeedbackView _feedback;
+        [SerializeField] private ARButton _feedbackButton;
         [SerializeField] private Color _highlightColor = new Color(1f, 0.85f, 0.2f);
         [SerializeField] private Color _rowColor = Color.white;
         [SerializeField] private Color _stripeColor = new Color(0.35f, 0.42f, 0.5f, 0.18f);
@@ -56,16 +53,16 @@ namespace AlienInvaders.Views
         {
             _panel.SetActive(false);
             _playAgain.OnPressed += HandlePlayAgainPressed;
-            _aboutButton.OnPressed += HandleAboutPressed;
-            _backButton.OnPressed += HandleBackPressed;
+            _feedbackButton.OnPressed += HandleFeedbackPressed;
+            _feedback.OnClosed += HandleFeedbackClosed;
             _picker.OnConfirmed += HandleInitialsConfirmed;
         }
 
         private void OnDestroy()
         {
             _playAgain.OnPressed -= HandlePlayAgainPressed;
-            _aboutButton.OnPressed -= HandleAboutPressed;
-            _backButton.OnPressed -= HandleBackPressed;
+            _feedbackButton.OnPressed -= HandleFeedbackPressed;
+            _feedback.OnClosed -= HandleFeedbackClosed;
             _picker.OnConfirmed -= HandleInitialsConfirmed;
         }
 
@@ -83,7 +80,7 @@ namespace AlienInvaders.Views
             _codeText.text = "RECORD CODE: " + GroupedCode(PackedRecordCode.FromResult(result));
             _picker.Hide();
             ShowTable(table, highlightIndex);
-            ShowAbout(false);
+            ShowFeedback(false);
             _panel.SetActive(true);
         }
 
@@ -119,18 +116,18 @@ namespace AlienInvaders.Views
             _picker.Begin(suggestion);
         }
 
-        /// <summary>Shows or hides the "Play again" button and the "i" button beside it.</summary>
+        /// <summary>Shows or hides the "Play again" button and the feedback button beside it.</summary>
         public void SetPlayAgainVisible(bool visible)
         {
             _playAgain.gameObject.SetActive(visible);
-            _aboutButton.gameObject.SetActive(visible);
+            _feedbackButton.gameObject.SetActive(visible);
         }
 
-        /// <summary>Turns the screen into the About page, or back into this match's results.</summary>
-        public void ShowAbout(bool about)
+        /// <summary>Turns the screen into the feedback form, or back into this match's results.</summary>
+        public void ShowFeedback(bool feedback)
         {
-            _resultsPage.SetActive(!about);
-            _aboutPage.SetActive(about);
+            _resultsPage.SetActive(!feedback);
+            _feedback.gameObject.SetActive(feedback);
         }
 
         /// <summary>Removes the panel.</summary>
@@ -158,14 +155,14 @@ namespace AlienInvaders.Views
             OnPlayAgain?.Invoke();
         }
 
-        private void HandleAboutPressed()
+        private void HandleFeedbackPressed()
         {
-            ShowAbout(true);
+            ShowFeedback(true);
         }
 
-        private void HandleBackPressed()
+        private void HandleFeedbackClosed()
         {
-            ShowAbout(false);
+            ShowFeedback(false);
         }
 
         // In front of the player at the moment the panel appears; it stays there, like an object in the room.

@@ -1,4 +1,5 @@
 using System;
+using AlienInvaders.Views;
 using UnityEngine;
 
 namespace AlienInvaders.Game
@@ -19,6 +20,10 @@ namespace AlienInvaders.Game
         [SerializeField] private Transform _gameRoot;
         [Tooltip("AR panel with the instructions, shown only while calibrating.")]
         [SerializeField] private GameObject _panel;
+        [Tooltip("The start screen: while its About page is open, the trigger does not calibrate.")]
+        [SerializeField] private StartScreenView _startScreen;
+        [Tooltip("A trigger pulled while the laser is on a button presses the button instead of calibrating.")]
+        [SerializeField] private ControllerPointer _pointer;
 
         private bool _waitingForTrigger;
         private int _beginFrame;
@@ -47,7 +52,8 @@ namespace AlienInvaders.Game
 
         private void Update()
         {
-            if (_waitingForTrigger && Time.frameCount != _beginFrame && ControllerInput.RightTriggerDown())
+            if (_waitingForTrigger && Time.frameCount != _beginFrame && !_startScreen.ShowingAbout && !_pointer.IsOverButton &&
+                ControllerInput.RightTriggerDown())
             {
                 Calibrate();
             }

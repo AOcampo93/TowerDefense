@@ -270,5 +270,20 @@ namespace AlienInvaders.Core
         public const int PointsPerKill = 5;
         public const int AccuracyBonus = 1000;
         public const int HighScoreEntries = 10;
+
+        // ---------- Play stats and feedback ----------
+        /// <summary>
+        /// The game sends what happens (sessions, matches, pages opened) to the Quest Games API every
+        /// TelemetryFlushSeconds, at most TelemetryBatchSize events at a time. Offline, up to TelemetryMaxPending events
+        /// wait on the headset (the oldest are dropped). A pause longer than TelemetrySessionTimeoutSeconds (the
+        /// headset taken off) ends the session. Seconds of a match below TelemetrySlowFps count as slow, so we learn how
+        /// the game runs on the players' headsets. FeedbackMessageMaxChars limits the message of the feedback form.
+        /// </summary>
+        public const float TelemetryFlushSeconds = 30f;
+        public const int TelemetryBatchSize = 100;
+        public const int TelemetryMaxPending = 2000;
+        public const float TelemetrySessionTimeoutSeconds = 300f;
+        public const float TelemetrySlowFps = 70f;
+        public const int FeedbackMessageMaxChars = 500;
     }
 }
