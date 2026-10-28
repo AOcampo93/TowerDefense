@@ -98,6 +98,7 @@ namespace AlienInvaders.Game
         {
             _game.OnStateChanged += HandleStateChanged;
             _game.OnRecordSaved += HandleRecordSaved;
+            _game.OnMatchQuit += HandleMatchQuit;
             _startScreen.OnAboutOpened += HandleAboutOpened;
             _feedback.OnOpened += HandleFeedbackOpened;
             _feedback.OnSubmitted += HandleFeedbackSubmitted;
@@ -107,6 +108,7 @@ namespace AlienInvaders.Game
         {
             _game.OnStateChanged -= HandleStateChanged;
             _game.OnRecordSaved -= HandleRecordSaved;
+            _game.OnMatchQuit -= HandleMatchQuit;
             _startScreen.OnAboutOpened -= HandleAboutOpened;
             _feedback.OnOpened -= HandleFeedbackOpened;
             _feedback.OnSubmitted -= HandleFeedbackSubmitted;
@@ -233,24 +235,46 @@ namespace AlienInvaders.Game
                         .With("start_screen_seconds", secondsInPrevious));
                     break;
                 case GameState.Results:
-                    MatchResult result = _game.LastResult;
-                    Track("match_end", new JsonFields()
-                        .With("match", _matchesThisSession)
-                        .With("seconds", result.SecondsSurvived)
-                        .With("wave", result.WaveReached)
-                        .With("score", result.Score)
-                        .With("kills", result.ShipsDestroyed)
-                        .With("shots", result.ShotsFired)
-                        .With("hits", result.ShotsHit)
-                        .With("accuracy", result.Accuracy)
-                        .With("power_ups", _powerUps)
-                        .With("tower_hits", _towerHits)
-                        .With("avg_fps", _fightSeconds > 0f ? _frames / _fightSeconds : 0f)
-                        .With("slow_seconds", _slowSeconds));
-                    StartCoroutine(Flush());
+                    TrackMatchEnd(_game.QuitByPlayer, false);
                     break;
             }
             _previousState = state;
+        }
+
+        // The match is over, by the tower falling or by the player from the wrist console.
+        private void TrackMatchEnd(bool quit, bool restart)
+        {
+            MatchResult result = _game.LastResult;
+            Track("match_end", new JsonFields()
+                .With("match", _matchesThisSession)
+                .With("seconds", result.SecondsSurvived)
+                .With("wave", result.WaveReached)
+                .With("score", result.Score)
+                .With("kills", result.ShipsDestroyed)
+                .With("shots", result.ShotsFired)
+                .With("hits", result.ShotsHit)
+                .With("accuracy", result.Accuracy)
+                .With("power_ups", _powerUps)
+                .With("tower_hits", _towerHits)
+                .With("tower_integrity", _game.Tower.Integrity)
+                .With("quit", quit)
+                .With("restart", restart)
+                .With("avg_fps", _fightSeconds > 0f ? _frames / _fightSeconds : 0f)
+                .With("slow_seconds", _slowSeconds));
+            StartCoroutine(Flush());
+        }
+
+        // The player ended the match from the wrist console. A restart skips the results, so the match is counted now.
+        private void HandleMatchQuit(bool restart)
+        {
+            Track("match_quit", new JsonFields()
+                .With("restart", restart)
+                .With("seconds", _game.LastResult.SecondsSurvived)
+                .With("wave", _game.LastResult.WaveReached));
+            if (restart)
+            {
+                TrackMatchEnd(true, true);
+            }
         }
 
         private void HandleRecordSaved(int place, MatchResult result)

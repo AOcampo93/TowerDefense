@@ -8,10 +8,11 @@ namespace AlienInvaders.Views
 {
     /// <summary>
     /// The feedback form on the scoreboard: how much fun the match was (1 to 5 stars), what we could improve (topics
-    /// the player can pick, as many as they like) and a message typed on the headset's system keyboard, which opens
-    /// when the player points at the message box and pulls the trigger. "Send" hands the form to whoever listens (the
-    /// Telemetry sends it to our database), thanks the player and closes the form a moment later. It starts empty
-    /// every time it opens.
+    /// the player can pick, as many as they like) and a message. Pointing at the message box and pulling the trigger
+    /// swaps the form for a keyboard on the same screen (BoardKeyboard) with the message above it; DONE brings the
+    /// form back. The Quest's system keyboard does not open over this game, so it brings its own. "Send" hands the
+    /// form to whoever listens (the Telemetry sends it to our database), thanks the player and closes the form a
+    /// moment later. It starts empty every time it opens.
     /// </summary>
     public class FeedbackView : MonoBehaviour
     {
@@ -22,6 +23,14 @@ namespace AlienInvaders.Views
         [SerializeField] private string[] _topicNames;
         [SerializeField] private ARButton _messageBox;
         [SerializeField] private TMP_Text _messageText;
+        [Tooltip("Everything of the form, hidden while typing.")]
+        [SerializeField] private GameObject _form;
+        [Tooltip("The keyboard and the message above it, shown while typing.")]
+        [SerializeField] private GameObject _typing;
+        [SerializeField] private TMP_Text _typingText;
+        [SerializeField] private BoardKeyboard _keyboard;
+        [Tooltip("Characters of the message shown while typing (the end of a long message).")]
+        [SerializeField] private int _typingShownChars = 190;
         [SerializeField] private ARButton _sendButton;
         [SerializeField] private ARButton _backButton;
         [SerializeField] private TMP_Text _status;
@@ -36,7 +45,6 @@ namespace AlienInvaders.Views
         private readonly List<string> _chosenTopics = new List<string>();
         private int _rating;
         private string _message = string.Empty;
-        private TouchScreenKeyboard _keyboard;
         private float _closeTimer;
         private bool _sent;
 
@@ -62,6 +70,8 @@ namespace AlienInvaders.Views
                 _topics[i].OnPressed += () => ToggleTopic(topic);
             }
             _messageBox.OnPressed += OpenKeyboard;
+            _keyboard.OnKey += Type;
+            _keyboard.OnDone += CloseKeyboard;
             _sendButton.OnPressed += Send;
             _backButton.OnPressed += Close;
         }
@@ -79,29 +89,13 @@ namespace AlienInvaders.Views
                 topic.Selected = false;
             }
             _sendButton.gameObject.SetActive(true);
+            CloseKeyboard();
             ShowStatus("Your feedback is anonymous. Thank you for helping us!", _hintColor);
             OnOpened?.Invoke();
         }
 
-        private void OnDisable()
-        {
-            if (_keyboard != null)
-            {
-                _keyboard.active = false;
-                _keyboard = null;
-            }
-        }
-
         private void Update()
         {
-            if (_keyboard != null)
-            {
-                SetMessage(_keyboard.text);
-                if (_keyboard.status != TouchScreenKeyboard.Status.Visible)
-                {
-                    _keyboard = null;
-                }
-            }
             if (_sent)
             {
                 _closeTimer -= Time.deltaTime;
@@ -123,6 +117,9 @@ namespace AlienInvaders.Views
             bool empty = _message.Trim().Length == 0;
             _messageText.text = empty ? _placeholder : _message;
             _messageText.color = empty ? _placeholderColor : _messageColor;
+            // While typing, the end of the message and a caret.
+            string tail = _message.Length > _typingShownChars ? "..." + _message.Substring(_message.Length - _typingShownChars) : _message;
+            _typingText.text = tail + "<color=#40D1E6>|</color>";
         }
 
         /// <summary>Lights the stars up to this one (0 turns them all off).</summary>
@@ -149,13 +146,27 @@ namespace AlienInvaders.Views
 
         private void OpenKeyboard()
         {
-            if (!TouchScreenKeyboard.isSupported)
+            _form.SetActive(false);
+            _typing.SetActive(true);
+        }
+
+        private void CloseKeyboard()
+        {
+            _typing.SetActive(false);
+            _form.SetActive(true);
+        }
+
+        // One key of the board keyboard: a character, or delete. A letter that starts a sentence is a capital.
+        private void Type(string key)
+        {
+            if (key == BoardKeyboard.Delete)
             {
-                ShowStatus("The headset keyboard opens here on the Quest.", _hintColor);
+                SetMessage(_message.Length > 0 ? _message.Substring(0, _message.Length - 1) : _message);
                 return;
             }
-            _keyboard = TouchScreenKeyboard.Open(_message, TouchScreenKeyboardType.Default, false, true, false, false,
-                "What can we improve?", Balance.FeedbackMessageMaxChars);
+            string trimmed = _message.TrimEnd();
+            bool sentenceStart = trimmed.Length == 0 || trimmed.EndsWith(".") || trimmed.EndsWith("!") || trimmed.EndsWith("?");
+            SetMessage(_message + (sentenceStart ? key.ToUpperInvariant() : key.ToLowerInvariant()));
         }
 
         private void Send()

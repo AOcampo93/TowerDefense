@@ -51,6 +51,8 @@ namespace AlienInvaders.Game
 
             if (_hovered != null && ControllerInput.RightTriggerDown())
             {
+                // A short tick in the hand, like a key giving way.
+                ControllerHaptics.PulseRight(0.3f, 0.03f);
                 _hovered.Press();
             }
         }

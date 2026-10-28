@@ -44,8 +44,16 @@ namespace AlienInvaders.Game
         /// <summary>Raised when a match enters the Top 10, with its place (0 = first) once the initials are confirmed.</summary>
         public event Action<int, MatchResult> OnRecordSaved;
 
-        /// <summary>The last match that ended (set when the Results state begins).</summary>
+        /// <summary>The last match that ended (set when the Results state begins, or when the player ends it).</summary>
         public MatchResult LastResult => _lastResult;
+
+        /// <summary>Raised when the player ends the match from the wrist console (true: they asked to start over).</summary>
+        public event Action<bool> OnMatchQuit;
+
+        /// <summary>True when the last match was ended by the player instead of by the tower falling.</summary>
+        public bool QuitByPlayer { get; private set; }
+
+        private bool _restartAfterRescue;
 
         // Core systems (pure C#). Created here so every MonoBehaviour shares the same instances.
         public TowerIntegrity Tower { get; private set; }
@@ -276,6 +284,8 @@ namespace AlienInvaders.Game
             Motion.ResetAll();
             Recorder.Clear();
             _motionTimer = 0f;
+            QuitByPlayer = false;
+            _restartAfterRescue = false;
         }
 
         private void HandleCalibrated()
@@ -318,7 +328,26 @@ namespace AlienInvaders.Game
             // The cabin opens in the real room, the same way it was built at the start: the player is back home.
             yield return _elevator.Open(Balance.ArrivalSeconds);
             _elevator.Hide();
-            EnterState(GameState.Results);
+            // A restart asked from the wrist console skips the results and goes back to the start screen.
+            EnterState(_restartAfterRescue ? GameState.Calibration : GameState.Results);
+        }
+
+        /// <summary>
+        /// The player ends the match from the wrist console: the emergency elevator takes them down right away, as if
+        /// the tower had fallen. With restart, the results are skipped and the start screen comes back.
+        /// </summary>
+        public void EndMatchNow(bool restart)
+        {
+            if (!InFight)
+            {
+                return;
+            }
+            QuitByPlayer = true;
+            _restartAfterRescue = restart;
+            _lastResult = Score.BuildResult(string.Empty, Waves.CurrentWave, DateTime.UtcNow);
+            Debug.Log($"[Game] Match ended by the player ({(restart ? "restart" : "end now")}) at {_lastResult.SecondsSurvived:0} s, wave {_lastResult.WaveReached}");
+            OnMatchQuit?.Invoke(restart);
+            EnterState(GameState.Rescue);
         }
 
         private IEnumerator ResultsRoutine()

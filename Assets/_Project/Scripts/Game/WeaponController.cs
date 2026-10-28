@@ -8,7 +8,8 @@ namespace AlienInvaders.Game
     /// The player's blaster in the right hand. It reads the trigger and asks the core WeaponHeat whether a shot is
     /// allowed (fire rate and overheating are rules, so they live in Core); a held trigger fires a burst of bolts.
     /// Bolts are instant beams (hitscan): a thin sphere cast works as a slight aim assist. Every shot is reported to the ScoreSystem, so misses lower
-    /// the accuracy bonus.
+    /// the accuracy bonus. Controls close to the player (the buttons of the wrist console) are found first with a
+    /// plain ray, so the aim assist never picks the wrong one, and shooting them does not count as a shot at the ships.
     /// </summary>
     public class WeaponController : MonoBehaviour
     {
@@ -17,6 +18,11 @@ namespace AlienInvaders.Game
         [SerializeField] private Transform _muzzle;
         [Tooltip("Layers the shots can hit (Ships).")]
         [SerializeField] private LayerMask _targetLayers;
+        [Tooltip("Layers of the controls shot from close by with a precise ray (UI: the wrist console).")]
+        [SerializeField] private LayerMask _controlLayers;
+
+        /// <summary>Tip of the barrel; the wrist console draws its aim dot from here.</summary>
+        public Transform Muzzle => _muzzle;
 
         /// <summary>True while the player can fire (combat states only).</summary>
         public bool Armed { get; private set; }
@@ -60,6 +66,14 @@ namespace AlienInvaders.Game
         {
             Vector3 origin = _muzzle.position;
             Vector3 direction = _muzzle.forward;
+
+            if (Physics.Raycast(origin, direction, out RaycastHit near, Balance.PreciseTargetRange, _controlLayers,
+                    QueryTriggerInteraction.Collide) && near.collider.TryGetComponent(out IShootable control))
+            {
+                control.ReceiveHit(_game.Boost.ShotDamage, near.point);
+                OnShot?.Invoke(origin, near.point, true);
+                return;
+            }
             bool hitSomething = Physics.SphereCast(origin, Balance.AimAssistRadius, direction, out RaycastHit hit,
                 Balance.WeaponRange, _targetLayers, QueryTriggerInteraction.Collide);
 

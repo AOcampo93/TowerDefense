@@ -85,6 +85,15 @@ namespace AlienInvaders.Core
         /// <summary>Reach of a shot (meters). Ships fly 45 to 95 m away, so a fair shot is never cut short.</summary>
         public const float WeaponRange = 500f;
 
+        /// <summary>
+        /// The wrist console (end the match, restart) is shot with the gun from close by: a thin ray up to
+        /// PreciseTargetRange meters finds its buttons before the aim assisted shot at the ships. A button acts after
+        /// ConsoleHoldSeconds under fire; each bolt counts for ConsoleHitGraceSeconds, so a steady stream fills it.
+        /// </summary>
+        public const float PreciseTargetRange = 1.5f;
+        public const float ConsoleHoldSeconds = 1.2f;
+        public const float ConsoleHitGraceSeconds = 0.3f;
+
         /// <summary>Damage of one bolt (a short burst brings down a fighter, a bomber needs a long one).</summary>
         public const int ShotDamage = 1;
 
