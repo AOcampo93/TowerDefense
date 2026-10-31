@@ -78,3 +78,5 @@ ExportedObj/
 /Assets/Resources/PerformanceTestRunInfo.json*
 /Assets/Resources/PerformanceTestRunSettings.json*
 /Assets/StreamingAssets/RuntimeActionBindings.json*
+
+/speech.md
