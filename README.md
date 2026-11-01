@@ -6,7 +6,7 @@ My goal with this project was to grow as a software engineer by building a compl
 
 Software Demo Video: [watch the walkthrough on YouTube](https://youtu.be/vTTPaDXaoOI)
 
-Meta Horizon Store: the game is currently in review by Meta. I will share the store link here as soon as it is approved.
+Play it on Meta Quest: [Alien Invaders: The Tower Defense on the Meta Horizon Store](https://www.meta.com/experiences/alien-invaders-the-tower-defense/1413224155210624/)
 
 ## How a match plays
 
@@ -119,7 +119,11 @@ Language and libraries:
 
 ## How to run
 
-You need a Meta Quest 3 or 3S with developer mode turned on, a USB cable, and Unity 6000.3.27f1 with Android Build Support.
+There are two ways to play the game.
+
+**Option 1: install it from the store.** This is the easiest way and does not need developer mode or a computer. On a Meta Quest 3 or 3S, open the [Alien Invaders: The Tower Defense page on the Meta Horizon Store](https://www.meta.com/experiences/alien-invaders-the-tower-defense/1413224155210624/), or search for "Alien Invaders" in the store on the headset, and install it.
+
+**Option 2: build it from the source code.** You need a Meta Quest 3 or 3S with developer mode turned on, a USB cable, and Unity 6000.3.27f1 with Android Build Support.
 
 1. Clone the repository and open it with Unity 6000.3.27f1.
 2. Add these free Unity Asset Store packages with Window > Package Manager > My Assets. Their license does not allow publishing them in this repository. Without them the game still runs, but the buildings near the tower are plain boxes, the streets are painted on the ground, the portals and explosions keep their simple shapes, the ships, the gun and the sky have no art and there is no music.
@@ -136,7 +140,7 @@ You need a Meta Quest 3 or 3S with developer mode turned on, a USB cable, and Un
 
 ## Store build
 
-The game has been submitted for a free release on the Meta Horizon Store and is in review by Meta. The store link will be added at the top of this file once it is approved. The store build uses its own package id (`com.arturoocampo.alieninvaders`) and a release key that is kept outside the repository. A custom launcher manifest removes the permissions the game does not use and limits the build to Quest 3 and 3S, and a custom Gradle template leaves out the 32 bit libraries that the Meta SDK includes, because the store rejects them.
+The game was approved by Meta and is published on the [Meta Horizon Store](https://www.meta.com/experiences/alien-invaders-the-tower-defense/1413224155210624/). The store build uses its own package id (`com.arturoocampo.alieninvaders`) and a release key that is kept outside the repository. A custom launcher manifest removes the permissions the game does not use and limits the build to Quest 3 and 3S, and a custom Gradle template leaves out the 32 bit libraries that the Meta SDK includes, because the store rejects them.
 
 ## Credits
 
@@ -165,7 +169,6 @@ Each folder with third party files has a `CREDITS.md` with the details.
 
 # Future Work
 
-* Public release on the Meta Horizon Store once Meta approves the game
 * Motion platform with two or three actuators controlled over UDP by an ESP32, plugged in through `PlatformMotionOutput` without changing any game rule
 * Replay a recorded motion track on the platform without wearing the headset
 * Online leaderboard that receives each `MatchResult` from the game
